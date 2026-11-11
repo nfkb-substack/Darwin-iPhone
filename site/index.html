@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Darwin-iPhone</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Darwin">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#14181c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-180.png">
+<link rel="icon" href="icone-180.png">
+<style>
+:root { --fond:#f6f4ef; --carte:#fff; --texte:#1c1f22; --doux:#6a7077; --trait:#dedad2; --accent:#1f6f54; --accent-fond:#e3f0ea; --alerte:#9a3b1f; --alerte-fond:#fbeee8; }
+@media (prefers-color-scheme: dark) { :root { --fond:#14181c; --carte:#1c2126; --texte:#e9e6df; --doux:#98a0a8; --trait:#2c333a; --accent:#7fd0ae; --accent-fond:#1d3329; --alerte:#f0a58c; --alerte-fond:#3a221b; } }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin:0; background:var(--fond); color:var(--texte); font: 16px/1.45 -apple-system, system-ui, sans-serif; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+button, input { font: inherit; color: inherit; }
+button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+header.barre { position: sticky; top: env(safe-area-inset-top); z-index: 5; background: var(--fond); border-bottom: 1px solid var(--trait); padding: 0 16px; height: 56px; display:flex; align-items:center; gap:10px; }
+header.barre h1 { font: 600 17px/1.2 Georgia, serif; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn { border: 1px solid var(--trait); background: var(--carte); border-radius: 10px; padding: 8px 12px; min-height: 40px; }
+.btn.plein { background: var(--accent); color: var(--fond); border-color: var(--accent); font-weight: 600; }
+.btn.danger { color: var(--alerte); }
+.btn[aria-pressed="true"] { background: var(--accent-fond); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+main { padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto; }
+.doux { color: var(--doux); font-size: 14px; }
+input[type=search] { width: 100%; padding: 10px 12px; border: 1px solid var(--trait); border-radius: 10px; background: var(--carte); font-size: 16px; }
+.filtres { display:flex; gap:8px; margin: 10px 0; flex-wrap: wrap; }
+ul.liste { list-style: none; margin: 0; padding: 0; }
+ul.liste li { border-bottom: 1px solid var(--trait); }
+ul.liste a { display: block; padding: 10px 0; color: inherit; text-decoration: none; }
+ul.liste .t { font: 600 16px/1.3 Georgia, serif; }
+ul.liste .s { color: var(--doux); font-size: 13px; margin-top: 2px; }
+.pastille { display:inline-block; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 6px; margin-left: 4px; background: var(--accent-fond); color: var(--accent); }
+h2 { font: 600 21px/1.25 Georgia, serif; margin: 6px 0 4px; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--doux); margin: 22px 0 8px; }
+.entete { display:flex; gap: 14px; align-items: flex-start; }
+.entete img { width: 96px; height: 96px; border-radius: 10px; object-fit: cover; background: var(--trait); flex: none; }
+.resume { font: 16px/1.55 Georgia, serif; }
+.versions { display:flex; gap: 8px; margin: 14px 0 6px; }
+.versions .btn { flex: 1; }
+.versions .btn.absent { opacity: .55; }
+.message { background: var(--alerte-fond); color: var(--alerte); border-radius: 10px; padding: 12px; margin: 10px 0; }
+.message a, .message button.lien { color: inherit; font-weight: 600; }
+.info { background: var(--accent-fond); border-radius: 10px; padding: 12px; margin: 10px 0; }
+button.lien, a.lien { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; }
+#lecteur { position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 4; background: var(--fond); border-bottom: 1px solid var(--trait); margin: 0 -16px; padding: 8px 16px 10px; }
+#lecteur .cmd { display:flex; align-items:center; justify-content: center; gap: 10px; }
+#lecteur .cmd .btn { min-width: 58px; min-height: 48px; font-variant-numeric: tabular-nums; }
+#lecteur .cmd .jouer { min-width: 76px; font-size: 20px; }
+#lecteur input[type=range] { width: 100%; margin: 6px 0 2px; accent-color: var(--accent); }
+#lecteur .temps { display:flex; justify-content: space-between; font-size: 13px; color: var(--doux); font-variant-numeric: tabular-nums; }
+#st { margin-top: 8px; }
+#st p { margin: 0; padding: 7px 8px; border-radius: 8px; font: 17px/1.5 Georgia, serif; color: var(--doux); }
+#st p.ici { color: var(--texte); background: var(--accent-fond); }
+#st p.musique { font: 14px/1.4 -apple-system, system-ui, sans-serif; text-align: center; }
+pre.notes { white-space: pre-wrap; word-break: break-word; font: 14px/1.5 -apple-system, system-ui, sans-serif; margin: 0; }
+details summary { color: var(--accent); padding: 8px 0; }
+table.fichiers { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.fichiers td { padding: 8px 0; border-bottom: 1px solid var(--trait); vertical-align: middle; }
+table.fichiers td:last-child { text-align: right; white-space: nowrap; }
+progress { width: 100%; }
+</style>
+</head>
+<body>
+<header class="barre">
+  <button class="btn" id="retour" hidden aria-label="Retour au catalogue">‹</button>
+  <h1 id="titre">Sur les épaules de Darwin</h1>
+  <button class="btn" id="versGestion" aria-label="Fichiers sur l'iPhone">Fichiers</button>
+</header>
+<main id="vue"><p class="doux">Chargement…</p></main>
+<input type="file" id="choix" multiple hidden>
+<audio id="audio" preload="metadata"></audio>
+<script>
+"use strict";
+/* Darwin-iPhone : catalogue, résumé, lecteur et sous-titres, entièrement sur l'appareil.
+   Les mp3 et les sous-titres sont importés une fois et gardés dans le stockage de la page (IndexedDB). */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const dateFr = d => { const [y, m, j] = d.split("-").map(Number); return `${j === 1 ? "1er" : j} ${MOIS[m - 1]} ${y}`; };
+const hms = s => { if (!isFinite(s)) return "–"; s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+const taille = o => o > 1e9 ? (o / 1e9).toFixed(1).replace(".", ",") + " Go" : Math.round(o / 1e6) + " Mo";
+const sansAccent = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const NOM = {m: "Monologue", o: "Original"};
+const mem = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+
+/* ---------- stockage ---------- */
+let bd;
+function ouvrirBD() {
+  return new Promise((ok, ko) => {
+    const r = indexedDB.open("darwin-iphone", 1);
+    r.onupgradeneeded = () => { const d = r.result; ["meta", "son", "pochette", "st"].forEach(s => d.createObjectStore(s)); };
+    r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error);
+  });
+}
+const req = r => new Promise((ok, ko) => { r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); });
+const lire = (s, k) => req(bd.transaction(s).objectStore(s).get(k));
+function ecrire(objets) {   // {magasin: [[clé, valeur], …]} ; valeur undefined = suppression
+  return new Promise((ok, ko) => {
+    const t = bd.transaction(Object.keys(objets), "readwrite");
+    for (const [s, l] of Object.entries(objets)) for (const [k, v] of l) v === undefined ? t.objectStore(s).delete(k) : t.objectStore(s).put(v, k);
+    t.oncomplete = () => ok(); t.onerror = t.onabort = () => ko(t.error);
+  });
+}
+let META = new Map(), ST = new Set();       // "m:313" -> {n, k, nom, o, notes, pochette} ; n° qui ont des sous-titres
+async function chargerEtat() {
+  const t = bd.transaction(["meta", "st"]);
+  const [cles, vals, st] = await Promise.all([req(t.objectStore("meta").getAllKeys()), req(t.objectStore("meta").getAll()), req(t.objectStore("st").getAllKeys())]);
+  META = new Map(cles.map((k, i) => [k, vals[i]])); ST = new Set(st);
+}
+const a = (n, k) => META.has(k + ":" + n);
+
+/* ---------- catalogue ---------- */
+let CAT = [], PAR_N = new Map(), REDIFFS = new Map();
+async function chargerCatalogue() {
+  const d = await (await fetch("catalogue.json")).json();
+  CAT = d.eps; CAT.forEach(e => { PAR_N.set(e.n, e); if (e.p != null) { if (!REDIFFS.has(e.p)) REDIFFS.set(e.p, []); REDIFFS.get(e.p).push(e.n); } });
+}
+const premiere = e => e.p != null && PAR_N.get(e.p) || e;
+const memes = e => { const p = premiere(e); return [p.n, ...(REDIFFS.get(p.n) || [])]; };   // même émission : première diffusion et rediffusions
+
+/* ---------- lecture des étiquettes ID3 (pochette, notes) ---------- */
+function texteID3(o, enc) {
+  try { return new TextDecoder(["iso-8859-1", "utf-16", "utf-16be", "utf-8"][enc] || "utf-8").decode(o).replace(/\0+$/, ""); } catch (e) { return ""; }
+}
+function finChaine(o, p, enc) { const large = enc === 1 || enc === 2; for (let i = p; i < o.length - (large ? 1 : 0); i += large ? 2 : 1) if (o[i] === 0 && (!large || o[i + 1] === 0)) return [i, i + (large ? 2 : 1)]; return [o.length, o.length]; }
+async function lireID3(f) {
+  const out = {notes: "", pochette: null};
+  try {
+    const h = new Uint8Array(await f.slice(0, 10).arrayBuffer());
+    if (h[0] !== 73 || h[1] !== 68 || h[2] !== 51) return out;
+    const v = h[3], tot = (h[6] & 127) << 21 | (h[7] & 127) << 14 | (h[8] & 127) << 7 | (h[9] & 127);
+    if (v < 3 || tot > 12e6) return out;
+    const o = new Uint8Array(await f.slice(10, 10 + tot).arrayBuffer());
+    let p = 0; const textes = {};
+    while (p + 10 <= o.length && o[p] !== 0) {
+      const id = String.fromCharCode(o[p], o[p + 1], o[p + 2], o[p + 3]);
+      const t = v === 4 ? (o[p + 4] & 127) << 21 | (o[p + 5] & 127) << 14 | (o[p + 6] & 127) << 7 | (o[p + 7] & 127) : (o[p + 4] << 24 | o[p + 5] << 16 | o[p + 6] << 8 | o[p + 7]) >>> 0;
+      if (!t || p + 10 + t > o.length) break;
+      const c = o.subarray(p + 10, p + 10 + t), enc = c[0];
+      if (id === "APIC" && !out.pochette) {
+        const [f1, d1] = finChaine(c, 1, 0), mime = texteID3(c.subarray(1, f1), 0) || "image/jpeg";
+        const [, d2] = finChaine(c, d1 + 1, enc);
+        out.pochette = new Blob([c.slice(d2)], {type: mime.includes("/") ? mime : "image/" + mime});
+      } else if (id === "USLT" || id === "COMM") {
+        const [, d] = finChaine(c, 4, enc), tx = texteID3(c.subarray(d), enc).trim();
+        if (tx && (!textes[id] || tx.length > textes[id].length)) textes[id] = tx;
+      }
+      p += 10 + t;
+    }
+    out.notes = [textes.COMM, textes.USLT].filter((x, i, l) => x && l.indexOf(x) === i).join("\n\n");
+  } catch (e) {}
+  return out;
+}
+
+/* ---------- import ---------- */
+async function importerSousTitres(f, suivi) {
+  // un épisode par ligne : {"n":313,"d":…,"o":[…],"s":[[t,"phrase"],…],"od":…}
+  const lecteur = f.stream().getReader(), dec = new TextDecoder();
+  let reste = "", nb = 0, lot = [];
+  const vider = async () => { if (lot.length) { await ecrire({st: lot}); nb += lot.length; lot = []; suivi(`Sous-titres : ${nb} épisodes…`); } };
+  const ligne = async l => { l = l.trim(); if (!l) return; const e = JSON.parse(l); if (!Number.isInteger(e.n) || !Array.isArray(e.s)) throw new Error("ligne inattendue"); lot.push([e.n, {d: e.d, o: e.o || [], s: e.s, od: e.od}]); if (lot.length >= 25) await vider(); };
+  for (;;) {
+    const {done, value} = await lecteur.read();
+    reste += dec.decode(value || new Uint8Array(), {stream: !done});
+    const l = reste.split("\n"); reste = l.pop();
+    for (const x of l) await ligne(x);
+    if (done) break;
+  }
+  await ligne(reste); await vider();
+  return nb;
+}
+async function importer(fichiers) {
+  const z = $("#import"), bilan = {sons: 0, st: 0, refus: []};
+  const suivi = (t, v, max) => { if (z) z.innerHTML = `<p>${esc(t)}</p>${max ? `<progress value="${v}" max="${max}"></progress>` : ""}`; };
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  let i = 0;
+  for (const f of fichiers) {
+    i++;
+    const m = /^(\d+)-(monologue|original)-.*\.mp3$/i.exec(f.name);
+    try {
+      if (m) {
+        const n = +m[1], k = m[2].toLowerCase()[0], cle = k + ":" + n;
+        suivi(`${i} / ${fichiers.length} : ${f.name}`, i - 1, fichiers.length);
+        const id3 = await lireID3(f);
+        await ecrire({son: [[cle, f]], pochette: [[cle, id3.pochette || undefined]], meta: [[cle, {n, k, nom: f.name, o: f.size, notes: id3.notes, pochette: !!id3.pochette}]]});
+        bilan.sons++;
+      } else if (/\.(ndjson|jsonl|txt)$/i.test(f.name)) {
+        bilan.st += await importerSousTitres(f, suivi);
+      } else bilan.refus.push(f.name + " : nom non reconnu (attendu : « 313-monologue-… .mp3 » ou « 313-original-… .mp3 »)");
+    } catch (e) {
+      bilan.refus.push(f.name + " : " + (e && e.name === "QuotaExceededError" ? "plus assez de place sur l'iPhone" : "import impossible (" + (e && e.message || e) + ")"));
+    }
+  }
+  await chargerEtat();
+  mem.set("bilan", bilan);
+  afficher();
+}
+
+/* ---------- lecteur ---------- */
+const audio = $("#audio");
+let EN_COURS = null;   // {n, k, url, st, coupes}
+function coupesOriginal(st) {   // intervalles de musique dans l'original : [début, fin, total retiré jusque-là]
+  let retire = 0; return (st.o || []).map(([pos, r]) => { const c = [pos + retire, pos + retire + r, retire + r, pos]; retire += r; return c; });
+}
+function versMono(T) {          // temps du fichier écouté -> temps du monologue (null pendant une musique)
+  if (!EN_COURS || EN_COURS.k === "m") return T;
+  let dec = 0; for (const [d, f, tot] of EN_COURS.coupes) { if (T < d) break; if (T < f) return null; dec = tot; }
+  return T - dec;
+}
+function depuisMono(t) {
+  if (!EN_COURS || EN_COURS.k === "m") return t;
+  let dec = 0; for (const [, , tot, pos] of EN_COURS.coupes) { if (pos > t) break; dec = tot; }
+  return t + dec;
+}
+async function ouvrirSon(n, k, lancer) {
+  const cle = k + ":" + n;
+  if (EN_COURS && EN_COURS.cle === cle) { if (lancer) audio.play().catch(() => {}); return true; }
+  const b = await lire("son", cle);
+  if (!b) return false;
+  fermerSon();
+  const st = await lire("st", n), e = PAR_N.get(n) || {t: "Émission n° " + n, d: ""};
+  EN_COURS = {cle, n, k, url: URL.createObjectURL(b.type ? b : new Blob([b], {type: "audio/mpeg"})), st, coupes: st ? coupesOriginal(st) : [], ligne: -2};
+  audio.src = EN_COURS.url;
+  const reprise = mem.get("pos:" + cle, 0);
+  audio.addEventListener("loadedmetadata", () => { if (reprise > 5 && reprise < audio.duration - 15) audio.currentTime = reprise; }, {once: true});
+  if ("mediaSession" in navigator) {
+    const meta = {title: e.t, artist: "Jean-Claude Ameisen", album: "Sur les épaules de Darwin · " + NOM[k].toLowerCase()};
+    const p = await lire("pochette", cle);
+    if (p) { EN_COURS.urlPochette = URL.createObjectURL(p); meta.artwork = [{src: EN_COURS.urlPochette, sizes: "512x512", type: p.type || "image/jpeg"}]; }
+    try { navigator.mediaSession.metadata = new MediaMetadata(meta); } catch (x) {}
+  }
+  mem.set("dernier", {n, k});
+  if (lancer) audio.play().catch(() => {});
+  return true;
+}
+function fermerSon() {
+  if (!EN_COURS) return;
+  audio.pause(); audio.removeAttribute("src"); audio.load();
+  URL.revokeObjectURL(EN_COURS.url); if (EN_COURS.urlPochette) URL.revokeObjectURL(EN_COURS.urlPochette);
+  EN_COURS = null;
+}
+const sauter = s => { if (audio.src) audio.currentTime = Math.max(0, Math.min((audio.duration || 1e9) - 1, audio.currentTime + s)); };
+if ("mediaSession" in navigator) {
+  const ms = navigator.mediaSession, poser = (x, f) => { try { ms.setActionHandler(x, f); } catch (e) {} };
+  poser("play", () => audio.play()); poser("pause", () => audio.pause());
+  poser("seekbackward", e => sauter(-(e.seekOffset || 15))); poser("seekforward", e => sauter(e.seekOffset || 30));
+  poser("seekto", e => { audio.currentTime = e.seekTime; });
+}
+let dernierEnreg = 0, defilementManuel = 0;
+function majLecteur() {
+  if (!EN_COURS) return;
+  const T = audio.currentTime, z = $("#lecteur");
+  if (Date.now() - dernierEnreg > 4000) { dernierEnreg = Date.now(); mem.set("pos:" + EN_COURS.cle, Math.floor(T)); }
+  if (!z || z.dataset.cle !== EN_COURS.cle) return;
+  const curseur = $("#curseur");
+  if (!curseur.dataset.tenu) { curseur.max = audio.duration || 0; curseur.value = T; }
+  $("#tps").textContent = hms(T); $("#dur").textContent = hms(audio.duration);
+  $("#jouer").textContent = audio.paused ? "▶︎" : "❚❚";
+  const st = EN_COURS.st; if (!st) return;
+  const t = versMono(T); let i = -1;
+  if (t != null) { let lo = 0, hi = st.s.length - 1; while (lo <= hi) { const mi = (lo + hi) >> 1; if (st.s[mi][0] <= t + 0.05) { i = mi; lo = mi + 1; } else hi = mi - 1; } }
+  if (i === EN_COURS.ligne) return;
+  EN_COURS.ligne = i;
+  const anc = document.querySelector("#st p.ici"); if (anc) anc.classList.remove("ici");
+  $("#musique").hidden = t != null;
+  const p = i >= 0 && $("#st").children[i + 1];
+  if (p) { p.classList.add("ici"); if (Date.now() - defilementManuel > 6000 && !audio.paused) p.scrollIntoView({block: "center", behavior: "smooth"}); }
+}
+["timeupdate", "play", "pause", "loadedmetadata", "seeked"].forEach(ev => audio.addEventListener(ev, majLecteur));
+audio.addEventListener("ended", () => { if (EN_COURS) mem.set("pos:" + EN_COURS.cle, 0); });
+addEventListener("touchmove", () => { defilementManuel = Date.now(); }, {passive: true});
+addEventListener("wheel", () => { defilementManuel = Date.now(); }, {passive: true});
+
+/* ---------- vues ---------- */
+function suggestion(e, k) {
+  // 1. l'autre version du même n° ; 2. la même émission sous un autre n° (rediffusion) ; 3. l'épisode disponible le plus proche
+  const autre = k === "m" ? "o" : "m";
+  if (a(e.n, autre)) return {n: e.n, k: autre, pourquoi: `la version « ${NOM[autre].toLowerCase()} » de cette émission est sur l'iPhone`};
+  for (const n of memes(e)) for (const kk of [k, autre]) if (n !== e.n && a(n, kk)) return {n, k: kk, pourquoi: `la même émission est sur l'iPhone sous le n° ${n} (${n < e.n ? "première diffusion" : "rediffusion"}, ${NOM[kk].toLowerCase()})`};
+  let mieux = null;
+  for (const m of META.values()) { const d = Math.abs(m.n - e.n) + (m.k === k ? 0 : 0.5); if (!mieux || d < mieux.d) mieux = {n: m.n, k: m.k, d}; }
+  if (mieux) { const x = PAR_N.get(mieux.n); return {n: mieux.n, k: mieux.k, pourquoi: `l'épisode disponible le plus proche est le n° ${mieux.n}${x ? ", « " + x.t + " »" : ""} (${NOM[mieux.k].toLowerCase()})`}; }
+  return null;
+}
+function vueListe() {
+  $("#titre").textContent = "Sur les épaules de Darwin"; $("#retour").hidden = true; $("#versGestion").hidden = false;
+  const seul = mem.get("seul", false) && META.size > 0, q = mem.get("q", "");
+  $("#vue").innerHTML = `<input type="search" id="q" placeholder="Titre, numéro ou année" value="${esc(q)}" autocomplete="off" autocorrect="off">
+    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button></div>
+    ${META.size ? "" : `<div class="info">Aucun fichier audio sur cet iPhone pour l'instant. <button class="lien" id="aller">Importer des émissions</button></div>`}
+    <p class="doux" id="compte"></p><ul class="liste" id="liste"></ul>`;
+  const dessiner = () => {
+    const mots = sansAccent($("#q").value.trim()).split(/\s+/).filter(Boolean), seulement = mem.get("seul", false) && META.size > 0;
+    const l = CAT.filter(e => (!seulement || a(e.n, "m") || a(e.n, "o")) && mots.every(m => (e._c || (e._c = sansAccent(`${e.t} n${e.n} ${e.n} ${e.d.slice(0, 4)}`))).includes(m)));
+    $("#compte").textContent = l.length + (l.length > 1 ? " diffusions" : " diffusion");
+    $("#liste").innerHTML = l.map(e => `<li><a href="#e${e.n}"><div class="t">${esc(e.t)}</div><div class="s">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? " · rediffusion du n° " + e.p : ""}${a(e.n, "m") ? '<span class="pastille">M</span>' : ""}${a(e.n, "o") ? '<span class="pastille">O</span>' : ""}</div></a></li>`).join("") || `<li class="doux" style="padding:12px 0">Aucune émission ne correspond.</li>`;
+  };
+  $("#q").oninput = () => { mem.set("q", $("#q").value); dessiner(); };
+  $("#fTous").onclick = () => { mem.set("seul", false); vueListe(); };
+  $("#fSeul").onclick = () => { mem.set("seul", true); vueListe(); };
+  if ($("#aller")) $("#aller").onclick = () => { location.hash = "#fichiers"; };
+  dessiner();
+  const y = mem.get("defil", 0); if (y) scrollTo(0, y);
+}
+async function vueEpisode(n, kDemande) {
+  const e = PAR_N.get(n);
+  if (!e) { $("#vue").innerHTML = `<div class="message">Il n'y a pas d'émission n° ${n} dans le catalogue.</div>`; return; }
+  $("#titre").textContent = "n° " + e.n; $("#retour").hidden = false; $("#versGestion").hidden = false;
+  const p = premiere(e), resume = e.r || p.r;
+  let k = kDemande || (EN_COURS && EN_COURS.n === n ? EN_COURS.k : a(n, "m") ? "m" : a(n, "o") ? "o" : null);
+  let alerte = "";
+  if (kDemande && !a(n, kDemande)) {
+    const s = suggestion(e, kDemande);
+    alerte = `<div class="message">La version « ${NOM[kDemande].toLowerCase()} » de cette émission n'est pas sur l'iPhone.${s ? ` En revanche, ${esc(s.pourquoi)}. <a href="#e${s.n}${s.k}">L'ouvrir</a>` : ` Aucun fichier audio n'est encore importé : <a href="#fichiers">importer des émissions</a>.`}</div>`;
+    k = null;
+  } else if (!k) {
+    const s = suggestion(e, "m");
+    alerte = `<div class="message">Cette émission n'est pas sur l'iPhone.${s ? ` En revanche, ${esc(s.pourquoi)}. <a href="#e${s.n}${s.k}">L'ouvrir</a>` : ` <a href="#fichiers">Importer des émissions</a>.`}</div>`;
+  }
+  const cle = k ? k + ":" + n : null, meta = cle && META.get(cle);
+  const poch = cle && await lire("pochette", cle) || (a(n, "m") && await lire("pochette", "m:" + n)) || (a(n, "o") && await lire("pochette", "o:" + n));
+  const st = k ? await lire("st", n) : null;
+  const urlP = poch ? URL.createObjectURL(poch) : "";
+  $("#vue").innerHTML = `<div class="entete">${urlP ? `<img src="${urlP}" alt="">` : ""}<div><div class="doux">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? ` · rediffusion du <a class="lien" href="#e${e.p}">n° ${e.p}</a>` : ""}</div><h2>${esc(e.t)}</h2></div></div>
+    <div class="versions">${["m", "o"].map(x => `<button class="btn ${a(n, x) ? "" : "absent"}" data-k="${x}" aria-pressed="${k === x}">${NOM[x]}${a(n, x) ? "" : " (absent)"}</button>`).join("")}</div>
+    ${alerte}
+    ${k ? `<div id="lecteur" data-cle="${cle}">
+      <div class="cmd"><button class="btn" id="m15" aria-label="Reculer de 15 secondes">−15 s</button><button class="btn plein jouer" id="jouer" aria-label="Lecture ou pause">▶︎</button><button class="btn" id="p30" aria-label="Avancer de 30 secondes">+30 s</button><button class="btn" id="vit" aria-label="Vitesse de lecture">1×</button></div>
+      <input type="range" id="curseur" min="0" max="0" step="1" value="0" aria-label="Position dans l'émission"><div class="temps"><span id="tps">0:00</span><span id="dur">–</span></div></div>` : ""}
+    ${resume ? `<h3>Résumé</h3><p class="resume">${esc(resume)}</p>` : `<p class="doux">Cette émission n'a pas encore de résumé dans l'index.</p>`}
+    ${meta && meta.notes ? `<details><summary>Notes du fichier (références, musiques)</summary><pre class="notes">${esc(meta.notes)}</pre></details>` : ""}
+    ${e.u ? `<p><a class="lien" href="${esc(e.u)}" target="_blank" rel="noopener">Page de l'émission sur Radio France ↗</a></p>` : ""}
+    ${k ? `<h3>Texte de l'émission</h3>${st ? `<div id="st"><p class="musique doux" id="musique" hidden>♪ musique</p>${st.s.map(([, t], i) => `<p data-i="${i}">${esc(t)}</p>`).join("")}</div>` : `<p class="doux">Les sous-titres de cette émission ne sont pas sur l'iPhone. Ils s'importent en une fois depuis la page <a class="lien" href="#fichiers">Fichiers</a>.</p>`}` : ""}`;
+  document.querySelectorAll(".versions .btn").forEach(b => b.onclick = () => { location.hash = "#e" + n + b.dataset.k; });
+  if (!k) return;
+  await ouvrirSon(n, k, false);
+  $("#jouer").onclick = () => audio.paused ? audio.play().catch(() => {}) : audio.pause();
+  $("#m15").onclick = () => sauter(-15); $("#p30").onclick = () => sauter(30);
+  const vitesses = [1, 1.25, 1.5, 0.85], vit = $("#vit");
+  const poserVit = v => { audio.playbackRate = v; audio.defaultPlaybackRate = v; vit.textContent = String(v).replace(".", ",") + "×"; };
+  poserVit(mem.get("vit", 1));
+  vit.onclick = () => { const v = vitesses[(vitesses.indexOf(audio.playbackRate) + 1) % vitesses.length]; mem.set("vit", v); poserVit(v); };
+  const c = $("#curseur");
+  c.oninput = () => { c.dataset.tenu = "1"; $("#tps").textContent = hms(+c.value); };
+  c.onchange = () => { audio.currentTime = +c.value; delete c.dataset.tenu; };
+  if ($("#st")) $("#st").onclick = ev => { const p = ev.target.closest("p[data-i]"); if (!p || !EN_COURS.st) return; audio.currentTime = depuisMono(EN_COURS.st.s[+p.dataset.i][0]); defilementManuel = 0; audio.play().catch(() => {}); };
+  EN_COURS.ligne = -2; majLecteur();
+}
+async function vueFichiers() {
+  $("#titre").textContent = "Fichiers sur l'iPhone"; $("#retour").hidden = false; $("#versGestion").hidden = true;
+  const l = [...META.values()].sort((x, y) => x.n - y.n || (x.k < y.k ? -1 : 1)), tot = l.reduce((s, m) => s + m.o, 0);
+  let place = "";
+  try { const e = await navigator.storage.estimate(); if (e && e.quota) place = ` Place encore utilisable par la page : environ ${taille(Math.max(0, e.quota - e.usage))}.`; } catch (x) {}
+  const bilan = mem.get("bilan", null); mem.set("bilan", null);
+  const rayon = k => { const r = l.filter(m => m.k === k); return `<h3>${k === "m" ? "Monologues" : "Originaux"} (${r.length})</h3>${r.length ? `<table class="fichiers">${r.map(m => `<tr><td><a class="lien" href="#e${m.n}${m.k}">n° ${m.n}</a> ${esc((PAR_N.get(m.n) || {}).t || m.nom)}</td><td>${taille(m.o)} <button class="btn danger" data-suppr="${m.k}:${m.n}" aria-label="Supprimer">✕</button></td></tr>`).join("")}</table>` : `<p class="doux">Aucun.</p>`}`; };
+  $("#vue").innerHTML = `${bilan ? `<div class="${bilan.refus.length ? "message" : "info"}">Import terminé : ${bilan.sons} fichier${bilan.sons > 1 ? "s" : ""} audio${bilan.st ? `, sous-titres de ${bilan.st} émissions` : ""}.${bilan.refus.length ? `<br>Non importés :<br>${bilan.refus.map(esc).join("<br>")}` : ""}</div>` : ""}
+    <p>Choisissez dans l'app Fichiers les mp3 à écouter (monologues et originaux, reconnus à leur nom) et, une seule fois, le fichier des sous-titres <b>sous-titres-darwin.ndjson</b>. Ils sont copiés dans cette page : vous pouvez ensuite les supprimer de Fichiers.</p>
+    <p><button class="btn plein" id="importer">Importer des fichiers…</button></p><div id="import"></div>
+    <p class="doux">${l.length} fichier${l.length > 1 ? "s" : ""} audio, ${taille(tot)}. Sous-titres : ${ST.size} émission${ST.size > 1 ? "s" : ""}.${place}</p>
+    ${rayon("m")}${rayon("o")}
+    <h3>Ménage</h3><p><button class="btn danger" id="toutSon">Supprimer tous les fichiers audio</button> <button class="btn danger" id="toutSt">Supprimer les sous-titres</button></p>
+    <p class="doux">Pour que l'iPhone ne vide pas ce stockage, ouvrez la page depuis l'écran d'accueil (bouton de partage de Safari, puis « Sur l'écran d'accueil »).</p>`;
+  $("#importer").onclick = () => $("#choix").click();
+  document.querySelectorAll("[data-suppr]").forEach(b => b.onclick = async () => { const c = b.dataset.suppr; if (EN_COURS && EN_COURS.cle === c) fermerSon(); await ecrire({son: [[c]], pochette: [[c]], meta: [[c]]}); await chargerEtat(); vueFichiers(); });
+  $("#toutSon").onclick = async () => { if (!confirm("Supprimer tous les fichiers audio de cette page ?")) return; fermerSon(); await new Promise(ok => { const t = bd.transaction(["son", "pochette", "meta"], "readwrite"); ["son", "pochette", "meta"].forEach(s => t.objectStore(s).clear()); t.oncomplete = ok; }); await chargerEtat(); vueFichiers(); };
+  $("#toutSt").onclick = async () => { if (!confirm("Supprimer les sous-titres de cette page ?")) return; await new Promise(ok => { const t = bd.transaction("st", "readwrite"); t.objectStore("st").clear(); t.oncomplete = ok; }); await chargerEtat(); vueFichiers(); };
+}
+let vueCourante = "";
+function afficher() {
+  const h = location.hash, m = /^#e(\d+)([mo])?$/.exec(h);
+  if (vueCourante === "liste" && h !== "" && h !== "#") mem.set("defil", scrollY);
+  if (m) { vueCourante = "ep"; scrollTo(0, 0); vueEpisode(+m[1], m[2]); }
+  else if (h === "#fichiers") { vueCourante = "fichiers"; scrollTo(0, 0); vueFichiers(); }
+  else { vueCourante = "liste"; vueListe(); }
+}
+$("#retour").onclick = () => { location.hash = ""; };
+$("#versGestion").onclick = () => { location.hash = "#fichiers"; };
+$("#choix").onchange = ev => { const f = [...ev.target.files]; ev.target.value = ""; if (f.length) importer(f); };
+addEventListener("hashchange", afficher);
+addEventListener("pagehide", () => { if (EN_COURS) mem.set("pos:" + EN_COURS.cle, Math.floor(audio.currentTime)); });
+(async () => {
+  try { bd = await ouvrirBD(); await Promise.all([chargerEtat(), chargerCatalogue()]); afficher(); }
+  catch (e) { $("#vue").innerHTML = `<div class="message">La page n'a pas pu démarrer (${esc(e && e.message || e)}). En navigation privée, le stockage est désactivé : ouvrez la page dans un onglet normal.</div>`; }
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>

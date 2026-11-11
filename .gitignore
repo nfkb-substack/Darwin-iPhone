@@ -1,0 +1,8 @@
+# le texte des émissions et les mp3 ne vont jamais dans le dépôt
+*.ndjson
+*.mp3
+essai/
+*.png
+!site/*.png
+.DS_Store
+node_modules/

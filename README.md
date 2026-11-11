@@ -1,0 +1,34 @@
+# Darwin-iPhone
+
+Webapp légère pour écouter « Sur les épaules de Darwin » sur un iPhone, sans réseau : catalogue des émissions,
+résumé, lecteur (−15 s / +30 s, vitesse, reprise de position, commandes de l'écran verrouillé), pochette et notes
+du fichier, sous-titres qui suivent la lecture (toucher une phrase pour y aller).
+
+Projet **séparé** de l'index (dossier Darwin, dépôt darwin-index, projet Vercel darwin-index).
+
+## Ce qui est en ligne, ce qui ne l'est pas
+
+- En ligne (dossier `site/`) : la page, le catalogue et les résumés des fiches (déjà publics). Aucun texte transcrit.
+- Sur le Mac et l'iPhone seulement : les mp3 et `sous-titres-darwin.ndjson` (texte des émissions).
+
+## Utilisation sur l'iPhone
+
+1. Ouvrir l'adresse de la webapp dans Safari, puis Partager › « Sur l'écran d'accueil » (le stockage d'une page
+   ouverte depuis l'écran d'accueil n'est pas vidé par iOS au bout de quelques jours).
+2. Envoyer sur l'iPhone (AirDrop, iCloud Drive, câble) les mp3 voulus et, une fois, `sous-titres-darwin.ndjson`.
+3. Dans la webapp : Fichiers › « Importer des fichiers… ». Les mp3 sont reconnus à leur nom
+   (`313-monologue-….mp3`, `313-original-….mp3`) et rangés en deux rayons. Ils sont copiés dans le stockage de la
+   page : on peut ensuite les supprimer de l'app Fichiers.
+4. Une émission absente affiche un message et propose l'autre version, la même émission sous un autre numéro
+   (rediffusion) ou l'épisode disponible le plus proche.
+
+## Mise à jour
+
+- Catalogue : `python3 outils/catalogue.py <labo_data.json> site/catalogue.json` (après une mise à jour de l'index).
+- Sous-titres : sur le Mac, `python3 outils/sous_titres.py` (lit `../lecteur/*.js` du dossier Darwin), puis
+  réimporter le fichier sur l'iPhone.
+- Après toute modification de `site/`, augmenter `VERSION` dans `site/sw.js`.
+
+## Essais
+
+`node essai.js` (Playwright) : import de vrais extraits, lecture, sous-titres, messages d'absence, hors ligne.
