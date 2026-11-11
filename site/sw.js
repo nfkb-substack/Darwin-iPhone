@@ -1,11 +1,19 @@
 // Darwin-iPhone : met la page et le catalogue en réserve pour un usage sans réseau.
-const VERSION = "darwin-iphone-1";
+// La réserve répond d'abord (la page s'ouvre sans réseau, et même si la connexion Vercel a expiré) ;
+// une copie fraîche est demandée en arrière-plan et servira à l'ouverture suivante.
+const VERSION = "darwin-iphone-2";
 const FICHIERS = ["./", "index.html", "catalogue.json", "manifest.webmanifest", "icone-180.png", "icone-512.png"];
+const bonne = r => r && r.ok && !r.redirected && r.type === "basic";
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(FICHIERS)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(l => Promise.all(l.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {
-  if (e.request.method !== "GET" || new URL(e.request.url).origin !== location.origin) return;
-  // réseau d'abord (pour recevoir les mises à jour), réserve si le réseau manque
-  e.respondWith(fetch(e.request).then(r => { if (r.ok) { const copie = r.clone(); caches.open(VERSION).then(c => c.put(e.request, copie)); } return r; })
-    .catch(() => caches.match(e.request, {ignoreSearch: true}).then(r => r || caches.match("index.html"))));
+  const u = new URL(e.request.url);
+  if (e.request.method !== "GET" || u.origin !== location.origin) return;
+  e.respondWith(caches.open(VERSION).then(async c => {
+    const cle = e.request.mode === "navigate" ? "index.html" : e.request;
+    const enReserve = await c.match(cle, {ignoreSearch: true});
+    const frais = fetch(e.request, {credentials: "same-origin"}).then(r => { if (bonne(r)) c.put(cle, r.clone()); return r; });
+    if (enReserve) { e.waitUntil(frais.catch(() => {})); return enReserve; }
+    return frais;
+  }));
 });
