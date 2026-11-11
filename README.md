@@ -22,6 +22,13 @@ Projet **séparé** de l'index (dossier Darwin, dépôt darwin-index, projet Ver
 4. Une émission absente affiche un message et propose l'autre version, la même émission sous un autre numéro
    (rediffusion) ou l'épisode disponible le plus proche.
 
+## Playlists
+
+Les playlists `.m3u8` créées par l'index Darwin (trajet, thème, saison) s'importent comme les autres fichiers
+(Catalogue › Playlists, ou Fichiers). Chaque ligne est reconnue au nom du mp3 (`313-monologue-….mp3`), quel que
+soit le dossier indiqué. Les émissions s'enchaînent dans l'ordre ; une émission absente de l'iPhone est sautée, et
+si seule l'autre version (original / monologue) est présente, c'est elle qui est lue.
+
 ## Mise à jour
 
 - Catalogue : `python3 outils/catalogue.py <labo_data.json> site/catalogue.json` (après une mise à jour de l'index).
@@ -32,3 +39,4 @@ Projet **séparé** de l'index (dossier Darwin, dépôt darwin-index, projet Ver
 ## Essais
 
 `node essai.js` (Playwright) : import de vrais extraits, lecture, sous-titres, messages d'absence, hors ligne.
+`node essai_playlist.js <dossier des extraits> <playlist.m3u8>` : import, affichage et enchaînement d'une playlist.

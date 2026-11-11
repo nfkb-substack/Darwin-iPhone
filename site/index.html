@@ -92,8 +92,8 @@ const mem = { get(k, d) { try { const v = localStorage.getItem(k); return v == n
 let bd;
 function ouvrirBD() {
   return new Promise((ok, ko) => {
-    const r = indexedDB.open("darwin-iphone", 1);
-    r.onupgradeneeded = () => { const d = r.result; ["meta", "son", "pochette", "st"].forEach(s => d.createObjectStore(s)); };
+    const r = indexedDB.open("darwin-iphone", 2);
+    r.onupgradeneeded = () => { const d = r.result; ["meta", "son", "pochette", "st", "pl"].forEach(s => { if (!d.objectStoreNames.contains(s)) d.createObjectStore(s); }); };
     r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error);
   });
 }
@@ -106,11 +106,12 @@ function ecrire(objets) {   // {magasin: [[clé, valeur], …]} ; valeur undefin
     t.oncomplete = () => ok(); t.onerror = t.onabort = () => ko(t.error);
   });
 }
+let LISTES = new Map();                     // nom du fichier -> {titre, items: [{n, k, lib}]}
 let META = new Map(), ST = new Set();       // "m:313" -> {n, k, nom, o, notes, pochette} ; n° qui ont des sous-titres
 async function chargerEtat() {
-  const t = bd.transaction(["meta", "st"]);
-  const [cles, vals, st] = await Promise.all([req(t.objectStore("meta").getAllKeys()), req(t.objectStore("meta").getAll()), req(t.objectStore("st").getAllKeys())]);
-  META = new Map(cles.map((k, i) => [k, vals[i]])); ST = new Set(st);
+  const t = bd.transaction(["meta", "st", "pl"]);
+  const [cles, vals, st, pc, pv] = await Promise.all([req(t.objectStore("meta").getAllKeys()), req(t.objectStore("meta").getAll()), req(t.objectStore("st").getAllKeys()), req(t.objectStore("pl").getAllKeys()), req(t.objectStore("pl").getAll())]);
+  META = new Map(cles.map((k, i) => [k, vals[i]])); ST = new Set(st); LISTES = new Map(pc.map((k, i) => [k, pv[i]]));
 }
 const a = (n, k) => META.has(k + ":" + n);
 
@@ -174,8 +175,23 @@ async function importerSousTitres(f, suivi) {
   await ligne(reste); await vider();
   return nb;
 }
+function lirePlaylist(texte, nom) {   // .m3u8 de l'index Darwin : une ligne par fichier, « …/313-monologue-….mp3 »
+  let titre = nom.replace(/\.m3u8?$/i, "").replace(/^darwin-/, "").replace(/-/g, " "), lib = "";
+  const items = [];
+  for (let l of texte.split(/\r?\n/)) {
+    l = l.trim(); if (!l) continue;
+    if (l.startsWith("#PLAYLIST:")) titre = l.slice(10).trim() || titre;
+    else if (l.startsWith("#EXTINF:")) lib = l.slice(l.indexOf(",") + 1).trim();
+    else if (!l.startsWith("#")) {
+      const m = /(?:^|[\/\\])(\d+)-(monologue|original)-[^\/\\]*\.mp3$/i.exec(decodeURIComponent(l.replace(/%(?![0-9a-f]{2})/gi, "%25")));
+      if (m) items.push({n: +m[1], k: m[2].toLowerCase()[0], lib});
+      lib = "";
+    }
+  }
+  return {titre, items};
+}
 async function importer(fichiers) {
-  const z = $("#import"), bilan = {sons: 0, st: 0, refus: []};
+  const z = $("#import"), bilan = {sons: 0, st: 0, listes: 0, refus: []};
   const suivi = (t, v, max) => { if (z) z.innerHTML = `<p>${esc(t)}</p>${max ? `<progress value="${v}" max="${max}"></progress>` : ""}`; };
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   let i = 0;
@@ -189,15 +205,21 @@ async function importer(fichiers) {
         const id3 = await lireID3(f);
         await ecrire({son: [[cle, f]], pochette: [[cle, id3.pochette || undefined]], meta: [[cle, {n, k, nom: f.name, o: f.size, notes: id3.notes, pochette: !!id3.pochette}]]});
         bilan.sons++;
+      } else if (/\.m3u8?$/i.test(f.name)) {
+        const pl = lirePlaylist(await f.text(), f.name);
+        if (!pl.items.length) bilan.refus.push(f.name + " : aucune émission reconnue dans cette playlist");
+        else { await ecrire({pl: [[f.name, pl]]}); bilan.listes++; bilan.derniere = f.name; }
       } else if (/\.(ndjson|jsonl|txt)$/i.test(f.name)) {
         bilan.st += await importerSousTitres(f, suivi);
-      } else bilan.refus.push(f.name + " : nom non reconnu (attendu : « 313-monologue-… .mp3 » ou « 313-original-… .mp3 »)");
+      } else bilan.refus.push(f.name + " : nom non reconnu (attendu : « 313-monologue-… .mp3 », « 313-original-… .mp3 », une playlist .m3u8 ou le fichier des sous-titres)");
     } catch (e) {
       bilan.refus.push(f.name + " : " + (e && e.name === "QuotaExceededError" ? "plus assez de place sur l'iPhone" : "import impossible (" + (e && e.message || e) + ")"));
     }
   }
   await chargerEtat();
   mem.set("bilan", bilan);
+  if (bilan.listes && !bilan.sons && !bilan.st && !bilan.refus.length) { mem.set("bilan", null); location.hash = "#l" + encodeURIComponent(bilan.derniere); return; }
+  if (location.hash === "#listes") { location.hash = "#fichiers"; return; }
   afficher();
 }
 
@@ -276,6 +298,41 @@ audio.addEventListener("ended", () => { if (EN_COURS) mem.set("pos:" + EN_COURS.
 addEventListener("touchmove", () => { defilementManuel = Date.now(); }, {passive: true});
 addEventListener("wheel", () => { defilementManuel = Date.now(); }, {passive: true});
 
+/* ---------- playlists ---------- */
+const dispo = it => a(it.n, it.k) ? it.k : a(it.n, it.k === "m" ? "o" : "m") ? (it.k === "m" ? "o" : "m") : null;   // version demandée, sinon l'autre
+let lancerAuto = false;
+function contexte(n) {   // la playlist en cours, si l'émission affichée en fait partie
+  const c = mem.get("ctx", null), pl = c && LISTES.get(c.id);
+  return pl && pl.items[c.i] && pl.items[c.i].n === n ? {id: c.id, i: c.i, pl} : null;
+}
+function voisinListe(c, sens) { for (let i = c.i + sens; i >= 0 && i < c.pl.items.length; i += sens) if (dispo(c.pl.items[i])) return i; return -1; }
+function allerDansListe(id, i, lancer) { const pl = LISTES.get(id), it = pl && pl.items[i]; if (!it) return; mem.set("ctx", {id, i}); lancerAuto = !!lancer; const cible = "#e" + it.n + (dispo(it) || it.k); if (location.hash === cible) afficher(); else location.hash = cible; }
+audio.addEventListener("ended", () => { if (!EN_COURS) return; const c = contexte(EN_COURS.n); if (!c) return; const j = voisinListe(c, 1); if (j >= 0) allerDansListe(c.id, j, true); });
+function vueListes() {
+  $("#titre").textContent = "Playlists"; $("#retour").hidden = false; $("#versGestion").hidden = false;
+  const l = [...LISTES].sort((x, y) => x[1].titre.localeCompare(y[1].titre, "fr"));
+  $("#vue").innerHTML = `<p>Les playlists <b>.m3u8</b> créées par l'index Darwin (trajet, thème, saison…) s'importent ici. Les émissions s'enchaînent dans l'ordre ; celles qui ne sont pas sur l'iPhone sont sautées.</p>
+    <p><button class="btn plein" id="importer">Importer une playlist…</button></p><div id="import"></div>
+    <ul class="liste">${l.map(([id, pl]) => { const ok = pl.items.filter(dispo).length; return `<li><a href="#l${encodeURIComponent(id)}"><div class="t">${esc(pl.titre)}</div><div class="s">${pl.items.length} émission${pl.items.length > 1 ? "s" : ""} · ${ok === pl.items.length ? "toutes sur l'iPhone" : ok + " sur l'iPhone"}</div></a></li>`; }).join("") || `<li class="doux" style="padding:12px 0">Aucune playlist pour l'instant.</li>`}</ul>`;
+  $("#importer").onclick = () => $("#choix").click();
+}
+function vuePlaylist(id) {
+  const pl = LISTES.get(id);
+  $("#titre").textContent = "Playlist"; $("#retour").hidden = false; $("#versGestion").hidden = false;
+  if (!pl) { $("#vue").innerHTML = `<div class="message">Cette playlist n'est plus sur l'iPhone. <a href="#listes">Voir les playlists</a></div>`; return; }
+  const ok = pl.items.map(dispo), nb = ok.filter(Boolean).length, c = mem.get("ctx", null), ici = c && c.id === id ? c.i : -1;
+  const premier = ok.findIndex(Boolean), manquants = pl.items.filter((it, i) => !ok[i]);
+  $("#vue").innerHTML = `<div class="doux"><a class="lien" href="#listes">Playlists</a></div><h2>${esc(pl.titre)}</h2>
+    <p class="doux">${pl.items.length} émission${pl.items.length > 1 ? "s" : ""}, dont ${nb} sur l'iPhone.</p>
+    ${nb ? `<p><button class="btn plein" id="lirePl">▶︎ ${ici >= 0 && ok[ici] ? "Reprendre" : "Lire la playlist"}</button></p>` : `<div class="message">Aucune émission de cette playlist n'est sur l'iPhone. <a href="#fichiers">Importer des émissions</a></div>`}
+    ${nb && manquants.length ? `<div class="message">${manquants.length} émission${manquants.length > 1 ? "s ne sont pas" : " n'est pas"} sur l'iPhone (n° ${manquants.map(it => it.n).join(", ")}) : ${manquants.length > 1 ? "elles seront sautées" : "elle sera sautée"}.</div>` : ""}
+    <ul class="liste">${pl.items.map((it, i) => { const e = PAR_N.get(it.n) || {t: it.lib || "Émission n° " + it.n, d: ""}; return `<li><a href="#e${it.n}${ok[i] || it.k}" data-i="${i}" style="${ok[i] ? "" : "opacity:.5"}"><div class="t">${i === ici ? "▸ " : ""}${esc(e.t)}</div><div class="s">${i + 1}. n° ${it.n}${e.d ? " · " + dateFr(e.d) : ""} · ${ok[i] ? NOM[ok[i]].toLowerCase() + (ok[i] !== it.k ? " (à la place de la version « " + NOM[it.k].toLowerCase() + " »)" : "") : "absente de l'iPhone"}</div></a></li>`; }).join("")}</ul>
+    <h3>Ménage</h3><p><button class="btn danger" id="supprPl">Retirer cette playlist</button> <span class="doux">Les fichiers audio ne sont pas supprimés.</span></p>`;
+  if ($("#lirePl")) $("#lirePl").onclick = () => allerDansListe(id, ici >= 0 && ok[ici] ? ici : premier, true);
+  document.querySelectorAll("#vue ul.liste a[data-i]").forEach(x => x.onclick = ev => { ev.preventDefault(); allerDansListe(id, +x.dataset.i, !!ok[+x.dataset.i]); });
+  $("#supprPl").onclick = async () => { if (!confirm("Retirer cette playlist ?")) return; await ecrire({pl: [[id]]}); if (c && c.id === id) mem.set("ctx", null); await chargerEtat(); location.hash = "#listes"; };
+}
+
 /* ---------- vues ---------- */
 function suggestion(e, k) {
   // 1. l'autre version du même n° ; 2. la même émission sous un autre n° (rediffusion) ; 3. l'épisode disponible le plus proche
@@ -291,7 +348,7 @@ function vueListe() {
   $("#titre").textContent = "Sur les épaules de Darwin"; $("#retour").hidden = true; $("#versGestion").hidden = false;
   const seul = mem.get("seul", false) && META.size > 0, q = mem.get("q", "");
   $("#vue").innerHTML = `<input type="search" id="q" placeholder="Titre, numéro ou année" value="${esc(q)}" autocomplete="off" autocorrect="off">
-    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button></div>
+    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button><button class="btn" id="fListes">Playlists (${LISTES.size})</button></div>
     ${META.size ? "" : `<div class="info">Aucun fichier audio sur cet iPhone pour l'instant. <button class="lien" id="aller">Importer des émissions</button></div>`}
     <p class="doux" id="compte"></p><ul class="liste" id="liste"></ul>`;
   const dessiner = () => {
@@ -303,6 +360,7 @@ function vueListe() {
   $("#q").oninput = () => { mem.set("q", $("#q").value); dessiner(); };
   $("#fTous").onclick = () => { mem.set("seul", false); vueListe(); };
   $("#fSeul").onclick = () => { mem.set("seul", true); vueListe(); };
+  $("#fListes").onclick = () => { location.hash = "#listes"; };
   if ($("#aller")) $("#aller").onclick = () => { location.hash = "#fichiers"; };
   dessiner();
   const y = mem.get("defil", 0); if (y) scrollTo(0, y);
@@ -311,7 +369,7 @@ async function vueEpisode(n, kDemande) {
   const e = PAR_N.get(n);
   if (!e) { $("#vue").innerHTML = `<div class="message">Il n'y a pas d'émission n° ${n} dans le catalogue.</div>`; return; }
   $("#titre").textContent = "n° " + e.n; $("#retour").hidden = false; $("#versGestion").hidden = false;
-  const p = premiere(e), resume = e.r || p.r;
+  const p = premiere(e), resume = e.r || p.r, ctx = contexte(n), lancer = lancerAuto; lancerAuto = false;
   let k = kDemande || (EN_COURS && EN_COURS.n === n ? EN_COURS.k : a(n, "m") ? "m" : a(n, "o") ? "o" : null);
   let alerte = "";
   if (kDemande && !a(n, kDemande)) {
@@ -327,6 +385,7 @@ async function vueEpisode(n, kDemande) {
   const st = k ? await lire("st", n) : null;
   const urlP = poch ? URL.createObjectURL(poch) : "";
   $("#vue").innerHTML = `<div class="entete">${urlP ? `<img src="${urlP}" alt="">` : ""}<div><div class="doux">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? ` · rediffusion du <a class="lien" href="#e${e.p}">n° ${e.p}</a>` : ""}</div><h2>${esc(e.t)}</h2></div></div>
+    ${ctx ? `<div class="info" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><a class="lien" href="#l${encodeURIComponent(ctx.id)}">${esc(ctx.pl.titre)}</a><div class="doux">${ctx.i + 1} / ${ctx.pl.items.length}</div></div><button class="btn" id="plPrec" aria-label="Émission précédente de la playlist" ${voisinListe(ctx, -1) < 0 ? "disabled" : ""}>‹</button><button class="btn" id="plSuiv" aria-label="Émission suivante de la playlist" ${voisinListe(ctx, 1) < 0 ? "disabled" : ""}>›</button></div>` : ""}
     <div class="versions">${["m", "o"].map(x => `<button class="btn ${a(n, x) ? "" : "absent"}" data-k="${x}" aria-pressed="${k === x}">${NOM[x]}${a(n, x) ? "" : " (absent)"}</button>`).join("")}</div>
     ${alerte}
     ${k ? `<div id="lecteur" data-cle="${cle}">
@@ -337,8 +396,9 @@ async function vueEpisode(n, kDemande) {
     ${e.u ? `<p><a class="lien" href="${esc(e.u)}" target="_blank" rel="noopener">Page de l'émission sur Radio France ↗</a></p>` : ""}
     ${k ? `<h3>Texte de l'émission</h3>${st ? `<div id="st"><p class="musique doux" id="musique" hidden>♪ musique</p>${st.s.map(([, t], i) => `<p data-i="${i}">${esc(t)}</p>`).join("")}</div>` : `<p class="doux">Les sous-titres de cette émission ne sont pas sur l'iPhone. Ils s'importent en une fois depuis la page <a class="lien" href="#fichiers">Fichiers</a>.</p>`}` : ""}`;
   document.querySelectorAll(".versions .btn").forEach(b => b.onclick = () => { location.hash = "#e" + n + b.dataset.k; });
+  if (ctx) { $("#plPrec").onclick = () => allerDansListe(ctx.id, voisinListe(ctx, -1), !audio.paused); $("#plSuiv").onclick = () => allerDansListe(ctx.id, voisinListe(ctx, 1), !audio.paused); }
   if (!k) return;
-  await ouvrirSon(n, k, false);
+  await ouvrirSon(n, k, lancer);
   $("#jouer").onclick = () => audio.paused ? audio.play().catch(() => {}) : audio.pause();
   $("#m15").onclick = () => sauter(-15); $("#p30").onclick = () => sauter(30);
   const vitesses = [1, 1.25, 1.5, 0.85], vit = $("#vit");
@@ -358,8 +418,8 @@ async function vueFichiers() {
   try { const e = await navigator.storage.estimate(); if (e && e.quota) place = ` Place encore utilisable par la page : environ ${taille(Math.max(0, e.quota - e.usage))}.`; } catch (x) {}
   const bilan = mem.get("bilan", null); mem.set("bilan", null);
   const rayon = k => { const r = l.filter(m => m.k === k); return `<h3>${k === "m" ? "Monologues" : "Originaux"} (${r.length})</h3>${r.length ? `<table class="fichiers">${r.map(m => `<tr><td><a class="lien" href="#e${m.n}${m.k}">n° ${m.n}</a> ${esc((PAR_N.get(m.n) || {}).t || m.nom)}</td><td>${taille(m.o)} <button class="btn danger" data-suppr="${m.k}:${m.n}" aria-label="Supprimer">✕</button></td></tr>`).join("")}</table>` : `<p class="doux">Aucun.</p>`}`; };
-  $("#vue").innerHTML = `${bilan ? `<div class="${bilan.refus.length ? "message" : "info"}">Import terminé : ${bilan.sons} fichier${bilan.sons > 1 ? "s" : ""} audio${bilan.st ? `, sous-titres de ${bilan.st} émissions` : ""}.${bilan.refus.length ? `<br>Non importés :<br>${bilan.refus.map(esc).join("<br>")}` : ""}</div>` : ""}
-    <p>Choisissez dans l'app Fichiers les mp3 à écouter (monologues et originaux, reconnus à leur nom) et, une seule fois, le fichier des sous-titres <b>sous-titres-darwin.ndjson</b>. Ils sont copiés dans cette page : vous pouvez ensuite les supprimer de Fichiers.</p>
+  $("#vue").innerHTML = `${bilan ? `<div class="${bilan.refus.length ? "message" : "info"}">Import terminé : ${bilan.sons} fichier${bilan.sons > 1 ? "s" : ""} audio${bilan.st ? `, sous-titres de ${bilan.st} émissions` : ""}${bilan.listes ? `, ${bilan.listes} playlist${bilan.listes > 1 ? "s" : ""}` : ""}.${bilan.refus.length ? `<br>Non importés :<br>${bilan.refus.map(esc).join("<br>")}` : ""}</div>` : ""}
+    <p>Choisissez dans l'app Fichiers les mp3 à écouter (monologues et originaux, reconnus à leur nom) et, une seule fois, le fichier des sous-titres <b>sous-titres-darwin.ndjson</b>. Les playlists <b>.m3u8</b> de l'index s'importent de la même façon. Tout est copié dans cette page : vous pouvez ensuite supprimer ces fichiers de Fichiers.</p>
     <p><button class="btn plein" id="importer">Importer des fichiers…</button></p><div id="import"></div>
     <p class="doux">${l.length} fichier${l.length > 1 ? "s" : ""} audio, ${taille(tot)}. Sous-titres : ${ST.size} émission${ST.size > 1 ? "s" : ""}.${place}</p>
     ${rayon("m")}${rayon("o")}
@@ -376,9 +436,14 @@ function afficher() {
   if (vueCourante === "liste" && h !== "" && h !== "#") mem.set("defil", scrollY);
   if (m) { vueCourante = "ep"; scrollTo(0, 0); vueEpisode(+m[1], m[2]); }
   else if (h === "#fichiers") { vueCourante = "fichiers"; scrollTo(0, 0); vueFichiers(); }
+  else if (h === "#listes") { vueCourante = "listes"; scrollTo(0, 0); vueListes(); }
+  else if (h.startsWith("#l")) { vueCourante = "pl"; scrollTo(0, 0); vuePlaylist(decodeURIComponent(h.slice(2))); }
   else { vueCourante = "liste"; vueListe(); }
 }
-$("#retour").onclick = () => { location.hash = ""; };
+$("#retour").onclick = () => {
+  const m = /^#e(\d+)/.exec(location.hash), c = m && contexte(+m[1]);
+  location.hash = c ? "#l" + encodeURIComponent(c.id) : vueCourante === "pl" ? "#listes" : "";
+};
 $("#versGestion").onclick = () => { location.hash = "#fichiers"; };
 $("#choix").onchange = ev => { const f = [...ev.target.files]; ev.target.value = ""; if (f.length) importer(f); };
 addEventListener("hashchange", afficher);
