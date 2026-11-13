@@ -19,7 +19,7 @@ const U = 'http://localhost:8767/', ok = [], dit = (nom, v) => { ok.push(!!v); c
   dit('départ : 1×, panneau fermé', await rate() === 1 && await bouton() === '1×' && await P.isHidden('#vitPan'));
   await P.click('#vit'); dit('le bouton ouvre le panneau', await P.isVisible('#vitPan') && (await P.getAttribute('#vit', 'aria-expanded')) === 'true');
   dit('9 vitesses dont 0,6× et 0,75×', (await P.locator('#vitPan [data-v]').count()) === 9 && await P.isVisible('#vitPan [data-v="0.6"]') && await P.isVisible('#vitPan [data-v="0.75"]'));
-  dit('une seule vitesse au départ (libellé)', /toutes les émissions/.test(await P.textContent('#vitQui')));
+  dit('par défaut : émissions n° 1 à 9 à part (champ à 9, libellé « à partir du n° 10 »)', (await P.inputValue('#vitN')) === '9' && /à partir du n° 10/.test(await P.textContent('#vitQui')));
   await P.click('#vitPan [data-v="0.8"]');
   dit('0,8× : lecteur, bouton, case enfoncée', await rate() === 0.8 && await bouton() === '0,8×' && (await P.getAttribute('#vitPan [data-v="0.8"]', 'aria-pressed')) === 'true' && (await P.getAttribute('#vitPan [data-v="1"]', 'aria-pressed')) === 'false');
   dit('le panneau se referme après le choix', await P.isHidden('#vitPan') && (await P.getAttribute('#vit', 'aria-expanded')) === 'false');
@@ -42,8 +42,15 @@ const U = 'http://localhost:8767/', ok = [], dit = (nom, v) => { ok.push(!!v); c
   // lecture réelle à vitesse lente : la durée écoulée suit la vitesse
   await va(313); await P.click('#jouer'); await P.waitForTimeout(600); const t = await P.evaluate(() => document.querySelector('#audio').currentTime);
   dit('lecture à 0,8× : avance moins vite que le temps réel', t > 0.2 && t < 0.58);
+  // page Fichiers : version et vérification de la mise à jour
+  const verif = async (corps, statut, ct) => { await P.route('**/sw.js*', r => r.fulfill({status: statut, contentType: ct || 'text/javascript', body: corps})); await P.goto(U + '#fichiers'); await P.waitForSelector('#verGo'); await P.click('#verGo'); await P.waitForFunction(() => !/Vérification/.test(document.querySelector('#verEtat').textContent)); const t = await P.textContent('#verEtat'); await P.unroute('**/sw.js*'); return t; };
+  dit('Fichiers : numéro de version affiché', /Version 6\./.test(await (async () => { await P.goto(U + '#fichiers'); await P.waitForSelector('#verGo'); return P.textContent('#vue'); })()));
+  dit('mise à jour : serveur à jour', /À jour \(version 6\)/.test(await verif('const VERSION = "darwin-iphone-6";', 200)));
+  dit('mise à jour : version plus récente signalée', /Version 99 (disponible|installée)/.test(await verif('const VERSION = "darwin-iphone-99";', 200)));
+  dit('mise à jour : accès refusé -> connexion Vercel expirée', /code 401.*connexion Vercel/.test(await verif('Authentication Required', 401, 'text/html')));
+  dit('mise à jour : page de connexion à la place de sw.js', /connexion Vercel a probablement expiré/.test(await verif('<html>Se connecter à Vercel</html>', 200, 'text/html')));
   // mise en page sur un écran étroit (320 px)
-  await P.click('#vit'); await P.waitForTimeout(50);
+  await va(313); await P.click('#vit'); await P.waitForTimeout(50);
   const l = await P.evaluate(() => { const r = document.querySelector('#vitPan').getBoundingClientRect(), bt = [...document.querySelectorAll('#vitPan .btn')].map(x => x.getBoundingClientRect()); return {droite: Math.max(...bt.map(x => x.right)), largeur: innerWidth, h: Math.min(...bt.map(x => x.height))}; });
   dit('panneau sans débordement à 320 px, boutons de 40 px au moins', l.droite <= l.largeur && l.h >= 40);
   console.log(errs.length ? errs : 'aucune erreur de page'); await b.close(); srv.close();

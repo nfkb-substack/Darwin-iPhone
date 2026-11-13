@@ -234,6 +234,26 @@ async function importer(fichiers) {
   afficher();
 }
 
+/* ---------- version de l'application ---------- */
+const VERSION_PAGE = 6;   // = numéro de VERSION dans sw.js
+async function majApp() {   // dit pourquoi une mise à jour n'arrive pas (le plus souvent : connexion Vercel expirée)
+  const etat = $("#verEtat"); etat.textContent = "Vérification…";
+  if (navigator.onLine === false) { etat.textContent = "Pas de réseau."; return; }
+  let t;
+  try {
+    const r = await fetch("sw.js?x=" + Date.now(), {cache: "no-store", redirect: "error"});
+    if (!r.ok) throw Object.assign(new Error("refus"), {code: r.status});
+    t = await r.text();
+  } catch (e) { etat.textContent = e && e.code ? `Le serveur refuse l'accès (code ${e.code}) : la connexion Vercel a probablement expiré.` : "Le serveur ne répond pas normalement : pas de réseau, ou connexion Vercel expirée."; return; }
+  const m = /darwin-iphone-(\d+)/.exec(t);
+  if (!m) { etat.textContent = "Réponse inattendue du serveur : la connexion Vercel a probablement expiré."; return; }
+  if (+m[1] <= VERSION_PAGE) { etat.textContent = `À jour (version ${VERSION_PAGE}).`; return; }
+  etat.textContent = `Version ${m[1]} disponible, installation…`;
+  try { const reg = "serviceWorker" in navigator && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
+  catch (e) { etat.textContent = `Version ${m[1]} disponible mais non installée : la connexion Vercel a probablement expiré.`; return; }
+  etat.textContent = `Version ${m[1]} installée : fermez complètement l'application et rouvrez-la.`;
+}
+
 /* ---------- émissions écoutées ---------- */
 // État gardé dans la page : {n: {d, m}} ; d = jour d'écoute "AAAA-MM-JJ", ou null si l'émission a été décochée ;
 // m = date de modification (ms). Mêmes règles de fusion que le service api/ecoutees (api/_fusion.js) et que le site
@@ -497,10 +517,10 @@ async function vueEpisode(n, kDemande) {
   await ouvrirSon(n, k, lancer);
   $("#jouer").onclick = () => audio.paused ? audio.play().catch(() => {}) : audio.pause();
   $("#m15").onclick = () => sauter(-15); $("#p30").onclick = () => sauter(30);
-  // Vitesse : une pour les émissions « du début » (n° 1 à vitN, saisi dans le panneau ; vide = aucune), une pour les autres.
+  // Vitesse : une pour les émissions « du début » (n° 1 à vitN, 9 par défaut, modifiable dans le panneau ; vide = aucune), une pour les autres.
   // Toucher une vitesse règle celle du groupe auquel appartient l'émission affichée. Mémoire par appareil.
   const VITESSES = [0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 1, 1.25, 1.5], vit = $("#vit"), pan = $("#vitPan"), fmt = v => String(v).replace(".", ",") + "×";
-  const seuil = () => { const s = Math.floor(+mem.get("vitN", 0)); return s > 0 ? s : 0; }, debut = () => seuil() > 0 && n <= seuil();
+  const seuil = () => { const s = Math.floor(+mem.get("vitN", 9)); return s > 0 ? s : 0; }, debut = () => seuil() > 0 && n <= seuil();
   const vitesseDe = () => { const v = +mem.get(debut() ? "vitP" : "vit", debut() ? 0.85 : 1); return v >= 0.5 && v <= 3 ? v : 1; };
   const poserVit = v => {
     audio.playbackRate = v; audio.defaultPlaybackRate = v; audio.preservesPitch = true; audio.webkitPreservesPitch = true;   // la voix ralentit sans devenir grave
@@ -540,9 +560,13 @@ async function vueFichiers() {
       <p><input class="cle" id="synCle" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Coller la clé" value="${esc(mem.get("darwin-synchro-cle", ""))}"></p>
       <p><button class="btn" id="synCleOk">Enregistrer la clé</button></p></details>
     <p class="doux">Secours sans réseau : « Exporter » produit darwin-ecoutees.json, qui s'importe ici comme les autres fichiers et dans le site privé.</p>
+    <h3>Version de l'application</h3>
+    <p>Version ${VERSION_PAGE}. <span class="doux" id="verEtat"></span></p>
+    <p><button class="btn" id="verGo">Vérifier la mise à jour</button></p>
     <h3>Ménage</h3><p><button class="btn danger" id="toutSon">Supprimer tous les fichiers audio</button> <button class="btn danger" id="toutSt">Supprimer les sous-titres</button></p>
     <p class="doux">Pour que l'iPhone ne vide pas ce stockage, ouvrez la page depuis l'écran d'accueil (bouton de partage de Safari, puis « Sur l'écran d'accueil »).</p>`;
   $("#importer").onclick = () => $("#choix").click();
+  $("#verGo").onclick = majApp;
   $("#synGo").onclick = () => { SYN.etat = "Synchronisation…"; ecoRafraichir(); synchro(); };
   $("#ecoExp").onclick = ecoExporter;
   $("#synCleOk").onclick = () => { mem.set("darwin-synchro-cle", $("#synCle").value.trim()); $("#synGo").click(); };

@@ -13,7 +13,7 @@ La conversation doit :
 
 Commencer par comparer la copie du Mac avec le dépôt (`git log`, `VERSION` de `site/sw.js`) : la référence est
 **le dépôt GitHub**. Le 13 novembre, la copie du Mac avait une version d'avance sur le dépôt (travail de l'étape 2
-non publié) ; elle a été publiée, puis la vitesse de lecture a suivi (version `darwin-iphone-5`) ; copie du Mac et dépôt sont alignés.
+non publié) ; elle a été publiée, puis la vitesse de lecture et la vérification de version (`darwin-iphone-6`) ; copie du Mac et dépôt sont alignés.
 
 ## Ce qu'est le projet
 
@@ -43,7 +43,7 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - `site/index.html` : toute l'application (HTML, CSS, JS, ~38 Ko).
 - `site/sw.js` : service worker. La réserve répond d'abord (la page s'ouvre sans réseau, même si la connexion
   Vercel a expiré), une copie fraîche est demandée en arrière-plan et sert à l'ouverture suivante.
-  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-5`). Les appels `/api/`
+  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-6`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
   ne passent jamais par la réserve.
 - `site/catalogue.json` : 612 diffusions (n°, date, titre, première diffusion, lien Radio France, résumé de la fiche).
 - `site/api/ecoutees.js` + `_fusion.js`, `site/package.json` : service de l'historique d'écoute (voir plus bas).
@@ -71,14 +71,18 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - **Playlists** : vues `#listes` et `#l<id>` ; `dispo`, `contexte`, `voisinListe`, `allerDansListe` ; lecture
   enchaînée sur `ended`, émissions absentes sautées, autre version utilisée si elle seule est présente.
 - **Vitesse** (dans `vueEpisode`) : le bouton « n× » ouvre un panneau de 9 vitesses (0,6 · 0,7 · 0,75 · 0,8 · 0,85 · 0,9 · 1 ·
-  1,25 · 1,5), `preservesPitch` activé. Deux groupes : les émissions du début (n° 1 à `vitN`, saisi dans le panneau ; vide =
-  aucun groupe) et les autres. Toucher une vitesse règle celle du groupe de l'émission affichée et referme le panneau.
-  Clés `localStorage` : `vit` (autres, 1 par défaut), `vitP` (début, 0,85 par défaut), `vitN`. Par appareil, non synchronisé.
+  1,25 · 1,5), `preservesPitch` activé. Deux groupes : les émissions du début (n° 1 à `vitN`, 9 par défaut d'après Rémi : la diction change à partir de la 10e émission ; modifiable dans
+  le panneau, vide = aucun groupe) et les autres. Toucher une vitesse règle celle du groupe de l'émission affichée et referme le panneau.
+  Clés `localStorage` : `vit` (autres, 1 par défaut), `vitP` (début, 0,85 par défaut), `vitN` (9 par défaut ; 0 = aucun groupe). Par appareil, non synchronisé.
 - **Émissions écoutées** (`eco…`) : marquées à la fin de la lecture (`ended`, monologue, original ou playlist), case
   « Écoutée en entier » dans la fiche, ✓ et filtre « Pas encore écoutées » dans le catalogue, section de la page
   Fichiers (synchroniser, exporter, clé). **Synchronisation** (`synchro`) : POST vers `api/ecoutees` après chaque
   changement (délai 1,5 s), au retour du réseau, à l'ouverture et au retour au premier plan. Sans réseau, l'état
   reste dans la page et part plus tard.
+- **Version / mise à jour** (`majApp`, page Fichiers) : affiche `VERSION_PAGE` et compare avec `sw.js` du serveur ; dit si le
+  serveur refuse l'accès (connexion Vercel expirée), si une version plus récente est disponible (`reg.update()`).
+  **Piège connu** : la page s'ouvre depuis la réserve, donc sans jamais redemander la connexion Vercel ; si le cookie
+  de l'app de l'écran d'accueil a expiré, elle reste sur son ancienne version sans message (constaté le 13 novembre).
 - **Vues** : catalogue (`vueListe`), fiche (`vueEpisode`), fichiers (`vueFichiers`), routage par `location.hash`
   dans `afficher`.
 
@@ -88,7 +92,7 @@ Dans le dossier du projet, avec Playwright :
 - `node essai.js` : import de vrais extraits, lecture, sous-titres, correspondance original/monologue, messages
   d'absence, fonctionnement hors ligne (fenêtre de la taille d'un iPhone SE).
 - `node essai_playlist.js <dossier des extraits> <playlist.m3u8>` : import, affichage, enchaînement d'une playlist.
-- `node essai_vitesse.js` : vitesses, groupe du début, retenue après rechargement, lecture ralentie, largeur 320 px (sans extraits).
+- `node essai_vitesse.js` : vitesses, groupe du début, retenue après rechargement, lecture ralentie, vérification de version, largeur 320 px (sans extraits).
 - `node essai_ecoutees.js` : écoutées et synchronisation entre deux « appareils », avec le vrai `api/ecoutees.js` et un
   magasin Blob simulé en mémoire (aucun appel à Vercel ; Playwright suffit, pas d'extraits à fournir).
 

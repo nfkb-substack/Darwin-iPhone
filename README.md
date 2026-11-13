@@ -34,7 +34,9 @@ si seule l'autre version (original / monologue) est présente, c'est elle qui es
 
 Le bouton de vitesse (à droite de +30 s) ouvre le choix : 0,6×, 0,7×, 0,75×, 0,8×, 0,85×, 0,9×, 1×, 1,25×, 1,5× (la voix
 ralentit sans devenir grave). Les premières émissions, dont la diction diffère, peuvent avoir leur propre vitesse :
-saisir dans le panneau « jusqu'au n° … » ; la vitesse choisie s'applique alors à ce groupe, l'autre garde la sienne.
+le panneau règle la limite (« jusqu'au n° 9 » au départ, vide = aucune) ; la vitesse choisie s'applique alors à ce groupe, l'autre garde la sienne.
+
+Fichiers › « Vérifier la mise à jour » affiche la version de l'app et dit pourquoi une mise à jour n'arrive pas.
 
 ## Émissions écoutées
 
