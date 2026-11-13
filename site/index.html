@@ -235,7 +235,7 @@ async function importer(fichiers) {
 }
 
 /* ---------- version de l'application ---------- */
-const VERSION_PAGE = 6;   // = numéro de VERSION dans sw.js
+const VERSION_PAGE = 7;   // = numéro de VERSION dans sw.js
 async function majApp() {   // dit pourquoi une mise à jour n'arrive pas (le plus souvent : connexion Vercel expirée)
   const etat = $("#verEtat"); etat.textContent = "Vérification…";
   if (navigator.onLine === false) { etat.textContent = "Pas de réseau."; return; }
@@ -551,7 +551,6 @@ async function vueFichiers() {
     <p>Choisissez dans l'app Fichiers les mp3 à écouter (monologues et originaux, reconnus à leur nom) et, une seule fois, le fichier des sous-titres <b>sous-titres-darwin.ndjson</b>. Les playlists <b>.m3u8</b> de l'index s'importent de la même façon. Tout est copié dans cette page : vous pouvez ensuite supprimer ces fichiers de Fichiers.</p>
     <p><button class="btn plein" id="importer">Importer des fichiers…</button></p><div id="import"></div>
     <p class="doux">${l.length} fichier${l.length > 1 ? "s" : ""} audio, ${taille(tot)}. Sous-titres : ${ST.size} émission${ST.size > 1 ? "s" : ""}.${place}</p>
-    ${rayon("m")}${rayon("o")}
     <h3>Émissions écoutées</h3>
     <p><span id="ecoNb">${ecoPhrase()}</span> Elles sont partagées avec le site privé du Mac. <span class="doux" id="synEtat">${esc(SYN.etat)}</span></p>
     <p><button class="btn" id="synGo">Synchroniser</button> <button class="btn" id="ecoExp">Exporter</button></p>
@@ -560,6 +559,7 @@ async function vueFichiers() {
       <p><input class="cle" id="synCle" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Coller la clé" value="${esc(mem.get("darwin-synchro-cle", ""))}"></p>
       <p><button class="btn" id="synCleOk">Enregistrer la clé</button></p></details>
     <p class="doux">Secours sans réseau : « Exporter » produit darwin-ecoutees.json, qui s'importe ici comme les autres fichiers et dans le site privé.</p>
+    ${rayon("m")}${rayon("o")}
     <h3>Version de l'application</h3>
     <p>Version ${VERSION_PAGE}. <span class="doux" id="verEtat"></span></p>
     <p><button class="btn" id="verGo">Vérifier la mise à jour</button></p>

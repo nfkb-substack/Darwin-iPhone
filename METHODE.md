@@ -13,7 +13,7 @@ La conversation doit :
 
 Commencer par comparer la copie du Mac avec le dépôt (`git log`, `VERSION` de `site/sw.js`) : la référence est
 **le dépôt GitHub**. Le 13 novembre, la copie du Mac avait une version d'avance sur le dépôt (travail de l'étape 2
-non publié) ; elle a été publiée, puis la vitesse de lecture et la vérification de version (`darwin-iphone-6`) ; copie du Mac et dépôt sont alignés.
+non publié) ; elle a été publiée, puis la vitesse de lecture et la vérification de version (`darwin-iphone-7`) ; copie du Mac et dépôt sont alignés.
 
 ## Ce qu'est le projet
 
@@ -43,7 +43,7 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - `site/index.html` : toute l'application (HTML, CSS, JS, ~38 Ko).
 - `site/sw.js` : service worker. La réserve répond d'abord (la page s'ouvre sans réseau, même si la connexion
   Vercel a expiré), une copie fraîche est demandée en arrière-plan et sert à l'ouverture suivante.
-  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-6`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
+  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-7`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
   ne passent jamais par la réserve.
 - `site/catalogue.json` : 612 diffusions (n°, date, titre, première diffusion, lien Radio France, résumé de la fiche).
 - `site/api/ecoutees.js` + `_fusion.js`, `site/package.json` : service de l'historique d'écoute (voir plus bas).

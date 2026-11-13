@@ -44,8 +44,8 @@ const U = 'http://localhost:8767/', ok = [], dit = (nom, v) => { ok.push(!!v); c
   dit('lecture à 0,8× : avance moins vite que le temps réel', t > 0.2 && t < 0.58);
   // page Fichiers : version et vérification de la mise à jour
   const verif = async (corps, statut, ct) => { await P.route('**/sw.js*', r => r.fulfill({status: statut, contentType: ct || 'text/javascript', body: corps})); await P.goto(U + '#fichiers'); await P.waitForSelector('#verGo'); await P.click('#verGo'); await P.waitForFunction(() => !/Vérification/.test(document.querySelector('#verEtat').textContent)); const t = await P.textContent('#verEtat'); await P.unroute('**/sw.js*'); return t; };
-  dit('Fichiers : numéro de version affiché', /Version 6\./.test(await (async () => { await P.goto(U + '#fichiers'); await P.waitForSelector('#verGo'); return P.textContent('#vue'); })()));
-  dit('mise à jour : serveur à jour', /À jour \(version 6\)/.test(await verif('const VERSION = "darwin-iphone-6";', 200)));
+  dit('Fichiers : numéro de version affiché', /Version 7\./.test(await (async () => { await P.goto(U + '#fichiers'); await P.waitForSelector('#verGo'); return P.textContent('#vue'); })()));
+  dit('mise à jour : serveur à jour', /À jour \(version 7\)/.test(await verif('const VERSION = "darwin-iphone-7";', 200)));
   dit('mise à jour : version plus récente signalée', /Version 99 (disponible|installée)/.test(await verif('const VERSION = "darwin-iphone-99";', 200)));
   dit('mise à jour : accès refusé -> connexion Vercel expirée', /code 401.*connexion Vercel/.test(await verif('Authentication Required', 401, 'text/html')));
   dit('mise à jour : page de connexion à la place de sw.js', /connexion Vercel a probablement expiré/.test(await verif('<html>Se connecter à Vercel</html>', 200, 'text/html')));
