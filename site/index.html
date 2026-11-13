@@ -51,6 +51,11 @@ button.lien, a.lien { background: none; border: 0; padding: 0; color: var(--acce
 #lecteur .cmd { display:flex; align-items:center; justify-content: center; gap: 10px; }
 #lecteur .cmd .btn { min-width: 58px; min-height: 48px; font-variant-numeric: tabular-nums; }
 #lecteur .cmd .jouer { min-width: 76px; font-size: 20px; }
+#vitPan { margin-top: 10px; }
+#vitPan .doux { margin: 4px 0; }
+.vits { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.vits .btn { flex: 1 1 48px; min-width: 48px; padding: 8px 4px; font-variant-numeric: tabular-nums; }
+#vitN { width: 4.5em; padding: 8px; border: 1px solid var(--trait); border-radius: 10px; background: var(--carte); font-size: 16px; }
 #lecteur input[type=range] { width: 100%; margin: 6px 0 2px; accent-color: var(--accent); }
 #lecteur .temps { display:flex; justify-content: space-between; font-size: 13px; color: var(--doux); font-variant-numeric: tabular-nums; }
 #st { margin-top: 8px; }
@@ -478,7 +483,8 @@ async function vueEpisode(n, kDemande) {
     <div class="versions">${["m", "o"].map(x => `<button class="btn ${a(n, x) ? "" : "absent"}" data-k="${x}" aria-pressed="${k === x}">${NOM[x]}${a(n, x) ? "" : " (absent)"}</button>`).join("")}</div>
     ${alerte}
     ${k ? `<div id="lecteur" data-cle="${cle}">
-      <div class="cmd"><button class="btn" id="m15" aria-label="Reculer de 15 secondes">−15 s</button><button class="btn plein jouer" id="jouer" aria-label="Lecture ou pause">▶︎</button><button class="btn" id="p30" aria-label="Avancer de 30 secondes">+30 s</button><button class="btn" id="vit" aria-label="Vitesse de lecture">1×</button></div>
+      <div class="cmd"><button class="btn" id="m15" aria-label="Reculer de 15 secondes">−15 s</button><button class="btn plein jouer" id="jouer" aria-label="Lecture ou pause">▶︎</button><button class="btn" id="p30" aria-label="Avancer de 30 secondes">+30 s</button><button class="btn" id="vit" aria-label="Vitesse de lecture" aria-expanded="false" aria-controls="vitPan">1×</button></div>
+      <div id="vitPan" hidden></div>
       <input type="range" id="curseur" min="0" max="0" step="1" value="0" aria-label="Position dans l'émission"><div class="temps"><span id="tps">0:00</span><span id="dur">–</span></div></div>` : ""}
     ${resume ? `<h3>Résumé</h3><p class="resume">${esc(resume)}</p>` : `<p class="doux">Cette émission n'a pas encore de résumé dans l'index.</p>`}
     ${meta && meta.notes ? `<details><summary>Notes du fichier (références, musiques)</summary><pre class="notes">${esc(meta.notes)}</pre></details>` : ""}
@@ -491,10 +497,23 @@ async function vueEpisode(n, kDemande) {
   await ouvrirSon(n, k, lancer);
   $("#jouer").onclick = () => audio.paused ? audio.play().catch(() => {}) : audio.pause();
   $("#m15").onclick = () => sauter(-15); $("#p30").onclick = () => sauter(30);
-  const vitesses = [1, 1.25, 1.5, 0.85], vit = $("#vit");
-  const poserVit = v => { audio.playbackRate = v; audio.defaultPlaybackRate = v; vit.textContent = String(v).replace(".", ",") + "×"; };
-  poserVit(mem.get("vit", 1));
-  vit.onclick = () => { const v = vitesses[(vitesses.indexOf(audio.playbackRate) + 1) % vitesses.length]; mem.set("vit", v); poserVit(v); };
+  // Vitesse : une pour les émissions « du début » (n° 1 à vitN, saisi dans le panneau ; vide = aucune), une pour les autres.
+  // Toucher une vitesse règle celle du groupe auquel appartient l'émission affichée. Mémoire par appareil.
+  const VITESSES = [0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 1, 1.25, 1.5], vit = $("#vit"), pan = $("#vitPan"), fmt = v => String(v).replace(".", ",") + "×";
+  const seuil = () => { const s = Math.floor(+mem.get("vitN", 0)); return s > 0 ? s : 0; }, debut = () => seuil() > 0 && n <= seuil();
+  const vitesseDe = () => { const v = +mem.get(debut() ? "vitP" : "vit", debut() ? 0.85 : 1); return v >= 0.5 && v <= 3 ? v : 1; };
+  const poserVit = v => {
+    audio.playbackRate = v; audio.defaultPlaybackRate = v; audio.preservesPitch = true; audio.webkitPreservesPitch = true;   // la voix ralentit sans devenir grave
+    vit.textContent = fmt(v);
+    pan.querySelectorAll("[data-v]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === v)));
+    const q = pan.querySelector("#vitQui"); if (q) q.textContent = !seuil() ? "Vitesse de toutes les émissions." : debut() ? `Vitesse des émissions n° 1 à ${seuil()}.` : `Vitesse des émissions à partir du n° ${seuil() + 1}.`;
+  };
+  pan.innerHTML = `<p class="doux" id="vitQui"></p><div class="vits">${VITESSES.map(v => `<button class="btn" data-v="${v}" aria-pressed="false">${fmt(v)}</button>`).join("")}</div>
+    <p class="doux"><label>Émissions du début, avec leur propre vitesse : jusqu'au n° <input id="vitN" type="number" inputmode="numeric" min="0" max="999" placeholder="aucune" value="${seuil() || ""}"></label></p>`;
+  pan.querySelectorAll("[data-v]").forEach(b => b.onclick = () => { const v = +b.dataset.v; mem.set(debut() ? "vitP" : "vit", v); poserVit(v); pan.hidden = true; vit.setAttribute("aria-expanded", "false"); });   // se referme : le lecteur est collé en haut de l'écran
+  $("#vitN").onchange = ev => { const x = Math.floor(+ev.target.value); mem.set("vitN", x > 0 ? x : 0); ev.target.value = x > 0 ? x : ""; poserVit(vitesseDe()); };
+  vit.onclick = () => { pan.hidden = !pan.hidden; vit.setAttribute("aria-expanded", String(!pan.hidden)); };
+  poserVit(vitesseDe());
   const c = $("#curseur");
   c.oninput = () => { c.dataset.tenu = "1"; $("#tps").textContent = hms(+c.value); };
   c.onchange = () => { audio.currentTime = +c.value; delete c.dataset.tenu; };

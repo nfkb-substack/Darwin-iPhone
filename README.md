@@ -30,6 +30,12 @@ Les playlists `.m3u8` créées par l'index Darwin (trajet, thème, saison) s'imp
 soit le dossier indiqué. Les émissions s'enchaînent dans l'ordre ; une émission absente de l'iPhone est sautée, et
 si seule l'autre version (original / monologue) est présente, c'est elle qui est lue.
 
+## Vitesse de lecture
+
+Le bouton de vitesse (à droite de +30 s) ouvre le choix : 0,6×, 0,7×, 0,75×, 0,8×, 0,85×, 0,9×, 1×, 1,25×, 1,5× (la voix
+ralentit sans devenir grave). Les premières émissions, dont la diction diffère, peuvent avoir leur propre vitesse :
+saisir dans le panneau « jusqu'au n° … » ; la vitesse choisie s'applique alors à ce groupe, l'autre garde la sienne.
+
 ## Émissions écoutées
 
 Une émission est marquée « écoutée en entier » quand la lecture atteint la fin ; la case de la fiche permet de la
@@ -50,4 +56,5 @@ autres fichiers (et dans le site privé).
 
 `node essai.js` (Playwright) : import de vrais extraits, lecture, sous-titres, messages d'absence, hors ligne.
 `node essai_playlist.js <dossier des extraits> <playlist.m3u8>` : import, affichage et enchaînement d'une playlist.
+`node essai_vitesse.js` : vitesses de lecture et groupe des premières émissions (sans extraits).
 `node essai_ecoutees.js` : émissions écoutées et synchronisation entre deux appareils (magasin simulé, sans Vercel).
