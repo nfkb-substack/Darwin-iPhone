@@ -5,6 +5,7 @@ résumé, lecteur (−15 s / +30 s, vitesse, reprise de position, commandes de l
 du fichier, sous-titres qui suivent la lecture (toucher une phrase pour y aller).
 
 Projet **séparé** de l'index (dossier Darwin, dépôt darwin-index, projet Vercel darwin-index).
+Pour reprendre le développement dans une nouvelle conversation : lire `METHODE.md`.
 
 ## Ce qui est en ligne, ce qui ne l'est pas
 
