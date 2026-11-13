@@ -63,6 +63,10 @@ table.fichiers { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.fichiers td { padding: 8px 0; border-bottom: 1px solid var(--trait); vertical-align: middle; }
 table.fichiers td:last-child { text-align: right; white-space: nowrap; }
 progress { width: 100%; }
+label.eco { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; min-height: 40px; }
+label.eco input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.ok { color: var(--accent); font-weight: 700; }
+input.cle { width: 100%; padding: 10px 12px; border: 1px solid var(--trait); border-radius: 10px; background: var(--carte); font: 14px/1.3 ui-monospace, Menlo, monospace; }
 </style>
 </head>
 <body>
@@ -209,9 +213,11 @@ async function importer(fichiers) {
         const pl = lirePlaylist(await f.text(), f.name);
         if (!pl.items.length) bilan.refus.push(f.name + " : aucune émission reconnue dans cette playlist");
         else { await ecrire({pl: [[f.name, pl]]}); bilan.listes++; bilan.derniere = f.name; }
+      } else if (/\.json$/i.test(f.name)) {
+        bilan.eco = (bilan.eco || 0) + ecoLireFichier(await f.text()); bilan.ecoLu = true;
       } else if (/\.(ndjson|jsonl|txt)$/i.test(f.name)) {
         bilan.st += await importerSousTitres(f, suivi);
-      } else bilan.refus.push(f.name + " : nom non reconnu (attendu : « 313-monologue-… .mp3 », « 313-original-… .mp3 », une playlist .m3u8 ou le fichier des sous-titres)");
+      } else bilan.refus.push(f.name + " : nom non reconnu (attendu : « 313-monologue-… .mp3 », « 313-original-… .mp3 », une playlist .m3u8, le fichier des sous-titres ou darwin-ecoutees.json)");
     } catch (e) {
       bilan.refus.push(f.name + " : " + (e && e.name === "QuotaExceededError" ? "plus assez de place sur l'iPhone" : "import impossible (" + (e && e.message || e) + ")"));
     }
@@ -222,6 +228,87 @@ async function importer(fichiers) {
   if (location.hash === "#listes") { location.hash = "#fichiers"; return; }
   afficher();
 }
+
+/* ---------- émissions écoutées ---------- */
+// État gardé dans la page : {n: {d, m}} ; d = jour d'écoute "AAAA-MM-JJ", ou null si l'émission a été décochée ;
+// m = date de modification (ms). Mêmes règles de fusion que le service api/ecoutees (api/_fusion.js) et que le site
+// privé du Mac : deux écoutes -> jour le plus ancien ; sinon la modification la plus récente l'emporte.
+const ecoFusion = (a, b) => !a ? b : !b ? a : a.d && b.d ? {d: a.d < b.d ? a.d : b.d, m: Math.max(a.m, b.m)} : b.m > a.m || (b.m === a.m && b.d) ? b : a;
+function ecoPropre(E) {
+  const o = {};
+  if (E && typeof E === "object" && !Array.isArray(E)) for (const [n, x] of Object.entries(E)) {
+    if (!/^\d{1,5}$/.test(n) || !x || typeof x !== "object") continue;
+    o[n] = {d: typeof x.d === "string" && /^\d{4}-\d\d-\d\d$/.test(x.d) ? x.d : null, m: Number.isFinite(x.m) && x.m > 0 ? Math.floor(x.m) : 0};
+  }
+  return o;
+}
+let ECO = ecoPropre(mem.get("darwin-ecoutees2", {}));
+const ecoJour = () => new Date().toLocaleDateString("sv-SE");
+const ecoutee = n => ECO[n] && ECO[n].d || null;
+const ecoNb = () => Object.values(ECO).filter(x => x.d).length;
+function ecoMeler(E) {   // fusionne un état reçu (service ou fichier) ; rend le nombre d'émissions dont l'état a changé
+  let k = 0;
+  for (const [n, x] of Object.entries(E)) { const v = ecoFusion(ECO[n], x); if (!ECO[n] || v.d !== ECO[n].d || v.m !== ECO[n].m) { if (!ECO[n] || v.d !== ECO[n].d) k++; ECO[n] = v; } }
+  mem.set("darwin-ecoutees2", ECO); return k;
+}
+function ecoPoser(n, oui) {
+  if (!!ecoutee(n) === !!oui) return;
+  ECO[n] = {d: oui ? ecoJour() : null, m: Date.now()}; mem.set("darwin-ecoutees2", ECO); ecoRafraichir(); synchroBientot();
+}
+function ecoLireFichier(texte) {   // darwin-ecoutees.json : version 2 {e: {n: {d, m}}} ou version 1 {ecoutees: {n: "AAAA-MM-JJ"}} (ajoute sans décocher)
+  const j = JSON.parse(texte);
+  if (!j || typeof j !== "object" || j.format !== "darwin-ecoutees") throw new Error("ce fichier .json n'est pas un historique d'écoute darwin-ecoutees.json");
+  let k;
+  if (j.v === 2 && j.e) k = ecoMeler(ecoPropre(j.e));
+  else {
+    const E = {}, t = Date.now();
+    for (const [n, d] of Object.entries(j.ecoutees || {})) { if (!/^\d{1,5}$/.test(n) || typeof d !== "string" || !/^\d{4}-\d\d-\d\d/.test(d)) continue; const j2 = d.slice(0, 10), c = ecoutee(n); if (!c || j2 < c) E[n] = {d: j2, m: t}; }
+    k = Object.keys(E).filter(n => !ecoutee(n)).length; Object.assign(ECO, E); mem.set("darwin-ecoutees2", ECO);
+  }
+  ecoRafraichir(); synchroBientot(); return k;
+}
+async function ecoExporter() {
+  const f = new File([JSON.stringify({format: "darwin-ecoutees", v: 2, e: ECO}, null, 1)], "darwin-ecoutees.json", {type: "application/json"});
+  try { if (navigator.canShare && navigator.canShare({files: [f]})) { await navigator.share({files: [f]}); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+let dessinerListe = null;
+function ecoRafraichir() {   // après un changement (case, fin de lecture, synchronisation, import) : met à jour ce qui est affiché
+  const m = /^#e(\d+)/.exec(location.hash), c = $("#eco");
+  if (vueCourante === "ep" && m && c) { const d = ecoutee(+m[1]); c.checked = !!d; $("#ecoDate").textContent = d ? "(le " + dateFr(d) + ")" : ""; }
+  else if (vueCourante === "liste" && dessinerListe && $("#liste")) dessinerListe();
+  if ($("#ecoNb")) $("#ecoNb").textContent = ecoPhrase();
+  if ($("#synEtat")) $("#synEtat").textContent = SYN.etat;
+}
+const ecoPhrase = () => { const k = ecoNb(); return k + " émission" + (k > 1 ? "s écoutées" : " écoutée") + " en entier."; };
+
+/* ---------- synchronisation de l'historique d'écoute (service api/ecoutees du même site) ---------- */
+// La clé est celle du projet Vercel (« Protection Bypass for Automation »), collée une fois dans Fichiers ; sans clé,
+// l'appel passe tant que la connexion Vercel de la page est valide. Sans réseau, rien ne se perd : l'état reste dans
+// la page et part à la synchronisation suivante.
+const SYN = {etat: "", enCours: false, encore: false, minuteur: 0, dernier: 0};
+function synchroBientot() { clearTimeout(SYN.minuteur); SYN.minuteur = setTimeout(synchro, 1500); }
+async function synchro() {
+  if (SYN.enCours) { SYN.encore = true; return; }
+  if (navigator.onLine === false) { SYN.etat = "Hors ligne : la synchronisation se fera au retour du réseau."; ecoRafraichir(); return; }
+  SYN.enCours = true; clearTimeout(SYN.minuteur);
+  const cle = mem.get("darwin-synchro-cle", "");
+  try {
+    const r = await fetch("api/ecoutees" + (cle ? "?x-vercel-protection-bypass=" + encodeURIComponent(cle) : ""), {method: "POST", headers: {"content-type": "text/plain"}, body: JSON.stringify({format: "darwin-ecoutees", v: 2, e: ECO}), cache: "no-store", redirect: "error"});
+    if (!r.ok || !/json/.test(r.headers.get("content-type") || "")) throw Object.assign(new Error("refus"), {code: r.status});
+    const j = await r.json(); if (!j || j.v !== 2) throw new Error("réponse inattendue");
+    ecoMeler(ecoPropre(j.e)); SYN.dernier = Date.now();
+    SYN.etat = "Synchronisé à " + new Date().toLocaleTimeString("fr-FR", {hour: "2-digit", minute: "2-digit"}) + ".";
+  } catch (e) {
+    SYN.etat = navigator.onLine === false ? "Hors ligne : la synchronisation se fera au retour du réseau."
+      : e && e.code >= 500 ? "Le service de synchronisation ne répond pas ; nouvel essai plus tard."
+      : cle ? "Synchronisation impossible : réseau absent ou clé refusée." : "Pas de synchronisation : collez la clé ci-dessous (ou reconnectez-vous à Vercel).";
+  }
+  SYN.enCours = false; ecoRafraichir();
+  if (SYN.encore) { SYN.encore = false; synchroBientot(); }
+}
+addEventListener("online", synchro);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && Date.now() - SYN.dernier > 60000) synchro(); });
 
 /* ---------- lecteur ---------- */
 const audio = $("#audio");
@@ -294,7 +381,7 @@ function majLecteur() {
   if (p) { p.classList.add("ici"); if (Date.now() - defilementManuel > 6000 && !audio.paused) p.scrollIntoView({block: "center", behavior: "smooth"}); }
 }
 ["timeupdate", "play", "pause", "loadedmetadata", "seeked"].forEach(ev => audio.addEventListener(ev, majLecteur));
-audio.addEventListener("ended", () => { if (EN_COURS) mem.set("pos:" + EN_COURS.cle, 0); });
+audio.addEventListener("ended", () => { if (EN_COURS) { mem.set("pos:" + EN_COURS.cle, 0); ecoPoser(EN_COURS.n, true); } });
 addEventListener("touchmove", () => { defilementManuel = Date.now(); }, {passive: true});
 addEventListener("wheel", () => { defilementManuel = Date.now(); }, {passive: true});
 
@@ -346,23 +433,24 @@ function suggestion(e, k) {
 }
 function vueListe() {
   $("#titre").textContent = "Sur les épaules de Darwin"; $("#retour").hidden = true; $("#versGestion").hidden = false;
-  const seul = mem.get("seul", false) && META.size > 0, q = mem.get("q", "");
+  const seul = mem.get("seul", false) && META.size > 0, neuf = mem.get("neuf", false), q = mem.get("q", "");
   $("#vue").innerHTML = `<input type="search" id="q" placeholder="Titre, numéro ou année" value="${esc(q)}" autocomplete="off" autocorrect="off">
-    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button><button class="btn" id="fListes">Playlists (${LISTES.size})</button></div>
+    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button><button class="btn" id="fListes">Playlists (${LISTES.size})</button><button class="btn" id="fNeuf" aria-pressed="${neuf}">Pas encore écoutées</button></div>
     ${META.size ? "" : `<div class="info">Aucun fichier audio sur cet iPhone pour l'instant. <button class="lien" id="aller">Importer des émissions</button></div>`}
     <p class="doux" id="compte"></p><ul class="liste" id="liste"></ul>`;
   const dessiner = () => {
-    const mots = sansAccent($("#q").value.trim()).split(/\s+/).filter(Boolean), seulement = mem.get("seul", false) && META.size > 0;
-    const l = CAT.filter(e => (!seulement || a(e.n, "m") || a(e.n, "o")) && mots.every(m => (e._c || (e._c = sansAccent(`${e.t} n${e.n} ${e.n} ${e.d.slice(0, 4)}`))).includes(m)));
+    const mots = sansAccent($("#q").value.trim()).split(/\s+/).filter(Boolean), seulement = mem.get("seul", false) && META.size > 0, neuves = mem.get("neuf", false);
+    const l = CAT.filter(e => (!seulement || a(e.n, "m") || a(e.n, "o")) && (!neuves || !ecoutee(e.n)) && mots.every(m => (e._c || (e._c = sansAccent(`${e.t} n${e.n} ${e.n} ${e.d.slice(0, 4)}`))).includes(m)));
     $("#compte").textContent = l.length + (l.length > 1 ? " diffusions" : " diffusion");
-    $("#liste").innerHTML = l.map(e => `<li><a href="#e${e.n}"><div class="t">${esc(e.t)}</div><div class="s">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? " · rediffusion du n° " + e.p : ""}${a(e.n, "m") ? '<span class="pastille">M</span>' : ""}${a(e.n, "o") ? '<span class="pastille">O</span>' : ""}</div></a></li>`).join("") || `<li class="doux" style="padding:12px 0">Aucune émission ne correspond.</li>`;
+    $("#liste").innerHTML = l.map(e => `<li><a href="#e${e.n}"><div class="t">${ecoutee(e.n) ? '<span class="ok" title="Écoutée en entier">✓ </span>' : ""}${esc(e.t)}</div><div class="s">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? " · rediffusion du n° " + e.p : ""}${a(e.n, "m") ? '<span class="pastille">M</span>' : ""}${a(e.n, "o") ? '<span class="pastille">O</span>' : ""}</div></a></li>`).join("") || `<li class="doux" style="padding:12px 0">Aucune émission ne correspond.</li>`;
   };
   $("#q").oninput = () => { mem.set("q", $("#q").value); dessiner(); };
   $("#fTous").onclick = () => { mem.set("seul", false); vueListe(); };
   $("#fSeul").onclick = () => { mem.set("seul", true); vueListe(); };
   $("#fListes").onclick = () => { location.hash = "#listes"; };
+  $("#fNeuf").onclick = () => { mem.set("neuf", !mem.get("neuf", false)); vueListe(); };
   if ($("#aller")) $("#aller").onclick = () => { location.hash = "#fichiers"; };
-  dessiner();
+  dessinerListe = dessiner; dessiner();
   const y = mem.get("defil", 0); if (y) scrollTo(0, y);
 }
 async function vueEpisode(n, kDemande) {
@@ -385,6 +473,7 @@ async function vueEpisode(n, kDemande) {
   const st = k ? await lire("st", n) : null;
   const urlP = poch ? URL.createObjectURL(poch) : "";
   $("#vue").innerHTML = `<div class="entete">${urlP ? `<img src="${urlP}" alt="">` : ""}<div><div class="doux">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? ` · rediffusion du <a class="lien" href="#e${e.p}">n° ${e.p}</a>` : ""}</div><h2>${esc(e.t)}</h2></div></div>
+    <label class="eco"><input type="checkbox" id="eco" ${ecoutee(n) ? "checked" : ""}> Écoutée en entier <span class="doux" id="ecoDate">${ecoutee(n) ? "(le " + dateFr(ecoutee(n)) + ")" : ""}</span></label>
     ${ctx ? `<div class="info" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><a class="lien" href="#l${encodeURIComponent(ctx.id)}">${esc(ctx.pl.titre)}</a><div class="doux">${ctx.i + 1} / ${ctx.pl.items.length}</div></div><button class="btn" id="plPrec" aria-label="Émission précédente de la playlist" ${voisinListe(ctx, -1) < 0 ? "disabled" : ""}>‹</button><button class="btn" id="plSuiv" aria-label="Émission suivante de la playlist" ${voisinListe(ctx, 1) < 0 ? "disabled" : ""}>›</button></div>` : ""}
     <div class="versions">${["m", "o"].map(x => `<button class="btn ${a(n, x) ? "" : "absent"}" data-k="${x}" aria-pressed="${k === x}">${NOM[x]}${a(n, x) ? "" : " (absent)"}</button>`).join("")}</div>
     ${alerte}
@@ -395,6 +484,7 @@ async function vueEpisode(n, kDemande) {
     ${meta && meta.notes ? `<details><summary>Notes du fichier (références, musiques)</summary><pre class="notes">${esc(meta.notes)}</pre></details>` : ""}
     ${e.u ? `<p><a class="lien" href="${esc(e.u)}" target="_blank" rel="noopener">Page de l'émission sur Radio France ↗</a></p>` : ""}
     ${k ? `<h3>Texte de l'émission</h3>${st ? `<div id="st"><p class="musique doux" id="musique" hidden>♪ musique</p>${st.s.map(([, t], i) => `<p data-i="${i}">${esc(t)}</p>`).join("")}</div>` : `<p class="doux">Les sous-titres de cette émission ne sont pas sur l'iPhone. Ils s'importent en une fois depuis la page <a class="lien" href="#fichiers">Fichiers</a>.</p>`}` : ""}`;
+  $("#eco").onchange = ev => ecoPoser(n, ev.target.checked);
   document.querySelectorAll(".versions .btn").forEach(b => b.onclick = () => { location.hash = "#e" + n + b.dataset.k; });
   if (ctx) { $("#plPrec").onclick = () => allerDansListe(ctx.id, voisinListe(ctx, -1), !audio.paused); $("#plSuiv").onclick = () => allerDansListe(ctx.id, voisinListe(ctx, 1), !audio.paused); }
   if (!k) return;
@@ -418,14 +508,25 @@ async function vueFichiers() {
   try { const e = await navigator.storage.estimate(); if (e && e.quota) place = ` Place encore utilisable par la page : environ ${taille(Math.max(0, e.quota - e.usage))}.`; } catch (x) {}
   const bilan = mem.get("bilan", null); mem.set("bilan", null);
   const rayon = k => { const r = l.filter(m => m.k === k); return `<h3>${k === "m" ? "Monologues" : "Originaux"} (${r.length})</h3>${r.length ? `<table class="fichiers">${r.map(m => `<tr><td><a class="lien" href="#e${m.n}${m.k}">n° ${m.n}</a> ${esc((PAR_N.get(m.n) || {}).t || m.nom)}</td><td>${taille(m.o)} <button class="btn danger" data-suppr="${m.k}:${m.n}" aria-label="Supprimer">✕</button></td></tr>`).join("")}</table>` : `<p class="doux">Aucun.</p>`}`; };
-  $("#vue").innerHTML = `${bilan ? `<div class="${bilan.refus.length ? "message" : "info"}">Import terminé : ${bilan.sons} fichier${bilan.sons > 1 ? "s" : ""} audio${bilan.st ? `, sous-titres de ${bilan.st} émissions` : ""}${bilan.listes ? `, ${bilan.listes} playlist${bilan.listes > 1 ? "s" : ""}` : ""}.${bilan.refus.length ? `<br>Non importés :<br>${bilan.refus.map(esc).join("<br>")}` : ""}</div>` : ""}
+  $("#vue").innerHTML = `${bilan ? `<div class="${bilan.refus.length ? "message" : "info"}">Import terminé : ${bilan.sons} fichier${bilan.sons > 1 ? "s" : ""} audio${bilan.st ? `, sous-titres de ${bilan.st} émissions` : ""}${bilan.listes ? `, ${bilan.listes} playlist${bilan.listes > 1 ? "s" : ""}` : ""}${bilan.ecoLu ? `, historique d'écoute (${bilan.eco} émission${bilan.eco > 1 ? "s ajoutées" : " ajoutée"})` : ""}.${bilan.refus.length ? `<br>Non importés :<br>${bilan.refus.map(esc).join("<br>")}` : ""}</div>` : ""}
     <p>Choisissez dans l'app Fichiers les mp3 à écouter (monologues et originaux, reconnus à leur nom) et, une seule fois, le fichier des sous-titres <b>sous-titres-darwin.ndjson</b>. Les playlists <b>.m3u8</b> de l'index s'importent de la même façon. Tout est copié dans cette page : vous pouvez ensuite supprimer ces fichiers de Fichiers.</p>
     <p><button class="btn plein" id="importer">Importer des fichiers…</button></p><div id="import"></div>
     <p class="doux">${l.length} fichier${l.length > 1 ? "s" : ""} audio, ${taille(tot)}. Sous-titres : ${ST.size} émission${ST.size > 1 ? "s" : ""}.${place}</p>
     ${rayon("m")}${rayon("o")}
+    <h3>Émissions écoutées</h3>
+    <p><span id="ecoNb">${ecoPhrase()}</span> Elles sont partagées avec le site privé du Mac. <span class="doux" id="synEtat">${esc(SYN.etat)}</span></p>
+    <p><button class="btn" id="synGo">Synchroniser</button> <button class="btn" id="ecoExp">Exporter</button></p>
+    <details ${mem.get("darwin-synchro-cle", "") ? "" : "open"}><summary>Clé de synchronisation</summary>
+      <p class="doux">Clé du projet Vercel darwin-iphone (Settings › Deployment Protection › Protection Bypass for Automation), la même que sur le Mac. Elle reste sur cet iPhone.</p>
+      <p><input class="cle" id="synCle" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Coller la clé" value="${esc(mem.get("darwin-synchro-cle", ""))}"></p>
+      <p><button class="btn" id="synCleOk">Enregistrer la clé</button></p></details>
+    <p class="doux">Secours sans réseau : « Exporter » produit darwin-ecoutees.json, qui s'importe ici comme les autres fichiers et dans le site privé.</p>
     <h3>Ménage</h3><p><button class="btn danger" id="toutSon">Supprimer tous les fichiers audio</button> <button class="btn danger" id="toutSt">Supprimer les sous-titres</button></p>
     <p class="doux">Pour que l'iPhone ne vide pas ce stockage, ouvrez la page depuis l'écran d'accueil (bouton de partage de Safari, puis « Sur l'écran d'accueil »).</p>`;
   $("#importer").onclick = () => $("#choix").click();
+  $("#synGo").onclick = () => { SYN.etat = "Synchronisation…"; ecoRafraichir(); synchro(); };
+  $("#ecoExp").onclick = ecoExporter;
+  $("#synCleOk").onclick = () => { mem.set("darwin-synchro-cle", $("#synCle").value.trim()); $("#synGo").click(); };
   document.querySelectorAll("[data-suppr]").forEach(b => b.onclick = async () => { const c = b.dataset.suppr; if (EN_COURS && EN_COURS.cle === c) fermerSon(); await ecrire({son: [[c]], pochette: [[c]], meta: [[c]]}); await chargerEtat(); vueFichiers(); });
   $("#toutSon").onclick = async () => { if (!confirm("Supprimer tous les fichiers audio de cette page ?")) return; fermerSon(); await new Promise(ok => { const t = bd.transaction(["son", "pochette", "meta"], "readwrite"); ["son", "pochette", "meta"].forEach(s => t.objectStore(s).clear()); t.oncomplete = ok; }); await chargerEtat(); vueFichiers(); };
   $("#toutSt").onclick = async () => { if (!confirm("Supprimer les sous-titres de cette page ?")) return; await new Promise(ok => { const t = bd.transaction("st", "readwrite"); t.objectStore("st").clear(); t.oncomplete = ok; }); await chargerEtat(); vueFichiers(); };
@@ -452,6 +553,7 @@ addEventListener("pagehide", () => { if (EN_COURS) mem.set("pos:" + EN_COURS.cle
   try { bd = await ouvrirBD(); await Promise.all([chargerEtat(), chargerCatalogue()]); afficher(); }
   catch (e) { $("#vue").innerHTML = `<div class="message">La page n'a pas pu démarrer (${esc(e && e.message || e)}). En navigation privée, le stockage est désactivé : ouvrez la page dans un onglet normal.</div>`; }
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  synchro();
 })();
 </script>
 </body>

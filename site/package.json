@@ -1,0 +1,6 @@
+{
+  "name": "darwin-iphone",
+  "private": true,
+  "description": "Webapp Darwin-iPhone : page statique et service api/ecoutees (historique d'écoute)",
+  "dependencies": { "@vercel/blob": "^2.9.0" }
+}

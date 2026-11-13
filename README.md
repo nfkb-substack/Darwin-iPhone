@@ -30,6 +30,15 @@ Les playlists `.m3u8` créées par l'index Darwin (trajet, thème, saison) s'imp
 soit le dossier indiqué. Les émissions s'enchaînent dans l'ordre ; une émission absente de l'iPhone est sautée, et
 si seule l'autre version (original / monologue) est présente, c'est elle qui est lue.
 
+## Émissions écoutées
+
+Une émission est marquée « écoutée en entier » quand la lecture atteint la fin ; la case de la fiche permet de la
+cocher ou décocher à la main. Le catalogue affiche un ✓ et un filtre « Pas encore écoutées ». L'historique est
+synchronisé avec le site privé du Mac par un petit service du même projet (`site/api/ecoutees.js`, numéros et dates
+seulement). La clé du projet se colle une fois dans Fichiers › « Clé de synchronisation ». Sans réseau, rien ne se
+perd : la synchronisation se fait au retour. « Exporter » produit `darwin-ecoutees.json`, qui s'importe comme les
+autres fichiers (et dans le site privé).
+
 ## Mise à jour
 
 - Catalogue : `python3 outils/catalogue.py <labo_data.json> site/catalogue.json` (après une mise à jour de l'index).
@@ -41,3 +50,4 @@ si seule l'autre version (original / monologue) est présente, c'est elle qui es
 
 `node essai.js` (Playwright) : import de vrais extraits, lecture, sous-titres, messages d'absence, hors ligne.
 `node essai_playlist.js <dossier des extraits> <playlist.m3u8>` : import, affichage et enchaînement d'une playlist.
+`node essai_ecoutees.js` : émissions écoutées et synchronisation entre deux appareils (magasin simulé, sans Vercel).
