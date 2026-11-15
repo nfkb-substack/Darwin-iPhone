@@ -1,0 +1,8 @@
+Analyse des originaux (15 novembre 2026). Scripts d'enquête, pas des outils du quotidien.
+À lancer dans la VM de Claude (python3 + numpy + ffmpeg), après les avoir copiés dans son $HOME :
+  inv.py  -> inventaire des originaux (échantillonnage, canaux, débit, coupure spectrale « cut », dynamique « dyn »),
+             écrit inv_orig.jsonl (inventaire du 15/11 avant remplacement des n° 32, 33, 38, 39 : joint ici).
+  cmp.py  -> compare ancien original (original/) et nouveau (_retelechargement_AAAAMMJJ/) par corrélation d'enveloppe :
+             python3 cmp.py 40 41 42   -> décalage nouveau = ancien + x s par tranche de temps.
+  cmp2.py -> cherche les blocs insérés et note le rythme de parole (blocs d'annonces / chroniques ?).
+Les dossiers et le jour sont écrits en dur au début des scripts (~/mnt/Darwin, _retelechargement_20261115).

@@ -120,6 +120,40 @@ données du site dans les réglages de Safari (les mp3 importés seraient perdus
 
 ## À faire
 
+### Point d'étape du 15 novembre 2026 au soir — reprendre ici
+**Fait aujourd'hui** (app version 9 en ligne, site privé reconstruit, outils sur le Mac) : étiquettes « difficile » / « mauvaise qualité » et drapeaux de
+phrase synchronisés ; conversion CBR de 51 mp3 ; `signalements.py`, `corriger.py`, `retelecharger.py` (corrigé : la relance passe aux suivantes, dossier affiché).
+
+**Retéléchargement des mauvaises qualités.** Rémi a étiqueté 34–41. Inventaire des 593 originaux (`outils/analyse_originaux/`) : 326 stéréo 44,1 kHz,
+252 stéréo 48 kHz, 11 mono 44,1 kHz avec souffle plat vers −21 dB de 14 à 20 kHz (30–38, 42, 43), 4 à 16 kHz mono coupés vers 5,75 kHz (39, 40, 41 à 24 kb/s ; 60 à 16 kb/s).
+Candidats non étiquetés : 30, 31, 32, 33, 42, 43, 60 (et 220, un peu faible en dynamique). Les nouveaux fichiers Radio France sont propres (stéréo 44,1 kHz 128 kb/s, sans souffle).
+Téléchargés dans `Darwin/_retelechargement_20261115/` : 30 à 39. **Restent 40, 41, 42, 43, 60** :
+`python3 Darwin-iPhone/outils/retelecharger.py 40 41 42 43 60 --telecharger` (sur le Mac ; ne retélécharge pas ce qui est déjà là). Les comparer ensuite
+avec `outils/analyse_originaux/cmp.py` (voir `LISEZMOI.txt`) avant de décider.
+
+**Remplacés le 15 novembre : 32, 33, 38, 39** (nouvel audio aligné sur l'ancien à 0,5 s près, sous-titres inchangés). Anciens fichiers, anciens monologues et caches de coupes
+dans `Darwin/_avant_remplacement_20261115/` (journal et `refaire_monologues.py` dedans). Nouveaux originaux = audio Radio France + étiquettes et pochette de l'ancien fichier.
+Monologues 32, 33, 38 refaits avec exactement les mêmes coupes, en CBR 128 kb/s avec entête Info. 33 : 37 s ajoutées en fin chez Radio France, écartées. 39 : pas de monologue
+(rediffusion non traitée), seul l'original change.
+
+**Pas touchés, décision à prendre** — la nouvelle version contient des blocs absents de l'ancienne, donc les sous-titres glisseraient après le bloc :
+| n° | écart nouveau / ancien |
+|---|---|
+| 30 | bloc de 104 s vers 42:29, puis +43 s en fin |
+| 31 | 3 s vers 19:59 (suite décalée de 2,3 s), +42 s en fin |
+| 34 | bloc de 26 s vers 43:50 |
+| 36 | début décalé de −5 s, bloc de 131 s vers 44:04 |
+| 37 | bloc de 45 s vers 47:05, +26 s en fin |
+| 35 | la nouvelle version ne dure que 26,6 min (première moitié seulement) : ne pas remplacer |
+Instants lus par corrélation d'enveloppe, à ±1 min : écouter la nouvelle version autour de chacun pour savoir si c'est une annonce, une chronique ou du contenu manquant
+à l'ancienne. Si c'est du contenu à garder : refaire monologue, transcription et sous-titres de l'épisode ; sinon, couper le bloc dans le nouvel original avant d'en refaire le monologue.
+
+**À faire sur l'iPhone et le Mac** : réimporter dans l'app les monologues 32, 33, 38 (nouveaux) et les 51 fichiers réencodés en CBR ; coller la clé de synchronisation sur le site privé du Mac
+si ce n'est pas fait ; réimporter `sous-titres-darwin.ndjson` seulement après une correction de texte (`corriger.py`).
+
+**Propositions en attente de Rémi** : fichier d'import qui étiquette 30, 31, 32, 33, 42, 43, 60 en « mauvaise qualité » (32 et 33 sont maintenant réglés) ; suppression de `Darwin-iPhone/mp3-cbr/` (96 Mo, essai CBR, nécessite
+l'autorisation de supprimer) ; sous-titres et `_retelechargement_20261115/` à garder jusqu'à la fin des comparaisons.
+
 ### Étape 2 du plan général — émissions écoutées partagées avec le site privé : FAIT, mise en service à terminer
 Code écrit le 12 novembre, publié le 13 novembre. Détail des décisions de Rémi (stockage Vercel Blob, accès par la
 clé du projet, un décochage se propage) : `Darwin/site_construction/PLAN.md`, section « Fait le 12 novembre (étape 2) ».
@@ -159,7 +193,7 @@ processus sont coupés à la fin : lancer `cbr.py --appliquer --max 6` plusieurs
   liens Radio France de `site/catalogue.json` (extracteur yt-dlp `FranceCultureIE`, motif `…/podcasts/<émission>/<titre>-<id>`) ; télécharge dans
   un **nouveau** dossier `Darwin/_retelechargement_AAAAMMJJ/` sous le nom de l'original actuel, compare durée / débit / VBR, écrit `rapport.txt`.
   Ne remplace rien. À lancer sur le Mac (radiofrance.fr est refusé depuis l'espace de travail de Claude : 403). Sans `--telecharger` : liste seulement.
-  Testé avec un faux yt-dlp ; **jamais exécuté contre Radio France**. Le fichier téléchargé est un original : le monologue et le texte se refont ensuite.
+  Exécuté contre Radio France le 15 novembre (30 à 39 téléchargés ; relance corrigée : `--max` ne compte que les fichiers restants). Le fichier téléchargé est un original : le monologue se refait ensuite (`monologue_seul.py`) ; le texte reste valable si le nouvel audio est aligné sur l'ancien (sinon voir le point d'étape).
 - `outils/signalements.py` : lit `--export` ou `--service`, retrouve les phrases dans `sous-titres-darwin.ndjson` (local), les affiche avec la phrase
   avant et après, écrit `signalements.txt` (ignoré par git). Le service ne contient jamais le texte.
 - `outils/corriger.py` : passe sur les phrases signalées une à une (`--export fichier.json` ou `--service CLE`). Affiche n° d'émission, titre, **instant dans le
