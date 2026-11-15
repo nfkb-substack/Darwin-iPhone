@@ -127,9 +127,10 @@ phrase synchronisés ; conversion CBR de 51 mp3 ; `signalements.py`, `corriger.p
 **Retéléchargement des mauvaises qualités.** Rémi a étiqueté 34–41. Inventaire des 593 originaux (`outils/analyse_originaux/`) : 326 stéréo 44,1 kHz,
 252 stéréo 48 kHz, 11 mono 44,1 kHz avec souffle plat vers −21 dB de 14 à 20 kHz (30–38, 42, 43), 4 à 16 kHz mono coupés vers 5,75 kHz (39, 40, 41 à 24 kb/s ; 60 à 16 kb/s).
 Candidats non étiquetés : 30, 31, 32, 33, 42, 43, 60 (et 220, un peu faible en dynamique). Les nouveaux fichiers Radio France sont propres (stéréo 44,1 kHz 128 kb/s, sans souffle).
-Téléchargés dans `Darwin/_retelechargement_20261115/` : 30 à 39. **Restent 40, 41, 42, 43, 60** :
-`python3 Darwin-iPhone/outils/retelecharger.py 40 41 42 43 60 --telecharger` (sur le Mac ; ne retélécharge pas ce qui est déjà là). Les comparer ensuite
-avec `outils/analyse_originaux/cmp.py` (voir `LISEZMOI.txt`) avant de décider.
+Téléchargés dans `Darwin/_retelechargement_20261115/` : 30 à 43 et 60 (tous). Comparaison faite avec `outils/analyse_originaux/cmp.py` (voir `LISEZMOI.txt`).
+Résultat pour les cinq derniers, **en attente de décision de Rémi** : 41 et 42 alignés à 0,0 s, 60 à −0,2 s (60 : le monologue est un lien dur vers l'original, à refaire en lien) ; 40 et 41 n'ont ni monologue ni texte (rediffusions) donc aucune contrainte ; 40 : nouveau = ancien −8,7 s puis −10,7 s (sans conséquence faute de texte) ; 43 : nouveau = ancien −3,5 s sur tout le fichier (l'ancien commence par 3,5 s de bande-annonce « A suivre sur les épaules de Darwin avec », première phrase du .srt) et +7 s en fin : monologue refaisable avec les coupes décalées de −3,5 s et 3,5 s de silence au début, la première phrase du texte devenant un fantôme à supprimer.
+
+
 
 **Remplacés le 15 novembre : 32, 33, 38, 39** (nouvel audio aligné sur l'ancien à 0,5 s près, sous-titres inchangés). Anciens fichiers, anciens monologues et caches de coupes
 dans `Darwin/_avant_remplacement_20261115/` (journal et `refaire_monologues.py` dedans). Nouveaux originaux = audio Radio France + étiquettes et pochette de l'ancien fichier.
@@ -137,15 +138,15 @@ Monologues 32, 33, 38 refaits avec exactement les mêmes coupes, en CBR 128 kb/s
 (rediffusion non traitée), seul l'original change.
 
 **Pas touchés, décision à prendre** — la nouvelle version contient des blocs absents de l'ancienne, donc les sous-titres glisseraient après le bloc :
-| n° | écart nouveau / ancien |
+| n° | bloc ajouté dans la NOUVELLE version (de … à …) |
 |---|---|
-| 30 | bloc de 104 s vers 42:29, puis +43 s en fin |
-| 31 | 3 s vers 19:59 (suite décalée de 2,3 s), +42 s en fin |
-| 34 | bloc de 26 s vers 43:50 |
-| 36 | début décalé de −5 s, bloc de 131 s vers 44:04 |
-| 37 | bloc de 45 s vers 47:05, +26 s en fin |
+| 30 | 104 s, de 42:29 à 44:13, puis +43 s en fin de fichier |
+| 31 | 3 s, de 19:59 à 20:02 (suite décalée de 2,3 s), +42 s en fin |
+| 34 | 26 s, de 43:50 à 44:16 |
+| 36 | début décalé de −5 s, 131 s de 44:04 à 46:15 |
+| 37 | 45 s, de 47:05 à 47:50, +26 s en fin |
 | 35 | la nouvelle version ne dure que 26,6 min (première moitié seulement) : ne pas remplacer |
-Instants lus par corrélation d'enveloppe, à ±1 min : écouter la nouvelle version autour de chacun pour savoir si c'est une annonce, une chronique ou du contenu manquant
+Instants lus par corrélation d'enveloppe (temps de la nouvelle version, `_retelechargement_20261115/`) : écouter ces plages pour savoir si c'est une annonce, une chronique ou du contenu manquant
 à l'ancienne. Si c'est du contenu à garder : refaire monologue, transcription et sous-titres de l'épisode ; sinon, couper le bloc dans le nouvel original avant d'en refaire le monologue.
 
 **À faire sur l'iPhone et le Mac** : réimporter dans l'app les monologues 32, 33, 38 (nouveaux) et les 51 fichiers réencodés en CBR ; coller la clé de synchronisation sur le site privé du Mac
