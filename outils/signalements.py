@@ -20,7 +20,7 @@ def lire_signalements(args):
     if args and args[0] == "--service":
         cle = args[1] if len(args) > 1 else os.environ.get("DARWIN_SYNC_KEY", "")
         if not cle: sys.exit("--service demande la clé (ou la variable DARWIN_SYNC_KEY)")
-        url = "https://darwin-iphone.vercel.app/api/ecoutees?x-vercel-protection-bypass=" + cle
+        url = os.environ.get("DARWIN_SYNC_URL", "https://darwin-iphone.vercel.app/api/ecoutees") + "?x-vercel-protection-bypass=" + cle
         with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "darwin-signalements"}), timeout=30) as r:
             j = json.load(r)
     elif args:

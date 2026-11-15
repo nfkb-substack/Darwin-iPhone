@@ -162,6 +162,13 @@ processus sont coupés à la fin : lancer `cbr.py --appliquer --max 6` plusieurs
   Testé avec un faux yt-dlp ; **jamais exécuté contre Radio France**. Le fichier téléchargé est un original : le monologue et le texte se refont ensuite.
 - `outils/signalements.py` : lit `--export` ou `--service`, retrouve les phrases dans `sous-titres-darwin.ndjson` (local), les affiche avec la phrase
   avant et après, écrit `signalements.txt` (ignoré par git). Le service ne contient jamais le texte.
+- `outils/corriger.py` : passe sur les phrases signalées une à une (`--export fichier.json` ou `--service CLE`). Affiche n° d'émission, titre, **instant dans le
+  monologue et dans l'original** (avec les coupes de `lecteur/<n>.js`), 2 phrases de contexte avant/après (`c` : 6). Commandes : Entrée passer, `e` réécrire la
+  phrase (pré-remplie seulement avec GNU readline ; `libedit` du Mac l'ignore), `/ancien/nouveau/`, `=` phrase juste, `q`. Modifie `Transcripts/<n>-monologue-….srt`
+  (mêmes indices que le site : tri par début, blocs vides ignorés ; BOM et fins de ligne conservés) et la ligne identique du `.txt` si unique, jamais le nombre de
+  phrases. Copie préalable dans `Transcripts/_avant_corrections_AAAAMMJJ/`, journal `Darwin-iPhone/corrections_AAAAMMJJ.txt` (local). Retire les drapeaux traités
+  (POST `err` avec `d: null` si clé, sinon `darwin-ecoutees-corrections.json` à importer), puis relance `construire_lecteur.py --n …` et `sous_titres.py` **sans numéro**
+  (avec des numéros il réécrit le .ndjson avec ces seuls épisodes). Reste à réimporter le .ndjson dans l'app. Testé sur données fictives, pas sur les vrais `.srt`.
 - Site public (index Darwin) : pas de lecteur ni de texte, donc ni étiquettes ni drapeau ; ils existent dans la webapp et le site privé.
 
 ### Entretien

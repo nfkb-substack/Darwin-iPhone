@@ -8,4 +8,6 @@ essai/
 node_modules/
 _retelechargement_*/
 signalements*.txt
+corrections*.txt
+darwin-ecoutees-corrections.json
 __pycache__/
