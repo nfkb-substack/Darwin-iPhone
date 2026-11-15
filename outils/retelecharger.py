@@ -118,12 +118,16 @@ def main():
         print('\n(liste seulement ; ajouter --telecharger pour télécharger dans %s)' % dest); return
     if not a_faire: return
     yt = commande_ytdlp(); dest.mkdir(parents=True, exist_ok=True)
+    print('\nDossier de destination : %s\n(à côté de original/ et monologue/, pas dedans ; rien n\'est remplacé)' % dest.resolve())
+    # Les émissions déjà présentes dans le dossier ne comptent pas dans le lot : la relance passe aux suivantes.
+    deja = [x for x in a_faire if (dest / x[2]).exists()]
+    restantes = [x for x in a_faire if not (dest / x[2]).exists()]
+    lot = restantes[:a.max]
+    print('%d déjà téléchargée(s), %d à faire, %d cette fois.' % (len(deja), len(restantes), len(lot)))
     rapport = []
-    for k, (n, e, nom, actuel) in enumerate(a_faire[:a.max]):
+    for k, (n, e, nom, actuel) in enumerate(lot):
         if k: time.sleep(a.pause)
         sortie = dest / nom
-        if sortie.exists():
-            print('n° %d : déjà téléchargé (%s)' % (n, sortie.name)); continue
         print('n° %d : téléchargement…' % n, flush=True)
         r = subprocess.run(yt + ['--no-playlist', '--no-overwrites', '--no-warnings', '-q', '-o', str(dest / (Path(nom).stem + '.%(ext)s')), e['u']], capture_output=True, text=True)
         fichiers = [f for f in dest.glob(glob.escape(Path(nom).stem) + '.*') if not f.name.endswith(('.part', '.ytdl'))]
@@ -134,12 +138,17 @@ def main():
         nv = sonde(nouveau); an = sonde(actuel) if actuel else (None, None, None)
         diff = ''
         if nv[0] and an[0] and abs(nv[0] - an[0]) > 1.5:
-            diff = ' — durée différente de %+.1f s : autre version du fichier (coupes, jingle) : écouter avant de remplacer' % (nv[0] - an[0])
+            diff = ' — durée différente de %+.1f s : autre version du fichier (coupes, jingle) : le monologue et le texte actuels ne correspondraient plus ; écouter avant de remplacer' % (nv[0] - an[0])
+            if nv[0] < 0.8 * an[0]:
+                diff += ' ; BEAUCOUP plus court : téléchargement incomplet ou découpage différent'
         ligne = 'n° %d : %s\n    actuel  : %s\n    nouveau : %s%s' % (n, nouveau.name, resume(an) if actuel else '—', resume(nv), diff)
         print(ligne); rapport.append(ligne)
-    if len(a_faire) > a.max: print('\n%d émission(s) restent : relancer la commande (celles déjà téléchargées sont sautées).' % (len(a_faire) - a.max))
+    if len(restantes) > len(lot): print('\n%d émission(s) restent : relancer la même commande (celles déjà téléchargées sont sautées).' % (len(restantes) - len(lot)))
+    elif restantes or deja: print('\nTout est téléchargé.')
     if rapport:
-        (dest / 'rapport.txt').write_text('\n'.join(rapport) + '\n', encoding='utf-8'); print('\nRapport : %s' % (dest / 'rapport.txt'))
+        with open(dest / 'rapport.txt', 'a', encoding='utf-8') as f:      # ajoute : un lancement ne perd pas le rapport du précédent
+            f.write('— %s\n' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + '\n'.join(rapport) + '\n\n')
+        print('\nRapport : %s\nFichiers : %s' % (dest.resolve() / 'rapport.txt', dest.resolve()))
 
 
 if __name__ == '__main__':
