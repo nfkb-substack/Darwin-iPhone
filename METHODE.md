@@ -133,6 +133,15 @@ clé du projet, un décochage se propage) : `Darwin/site_construction/PLAN.md`, 
 - import d'un lot de 5 à 10 mp3 (mémoire et durée) ;
 - usage sans réseau.
 
+### Décalage après un saut en arrière (constaté le 15 novembre, en cours)
+Cause probable : les monologues n° 1 à 16, 20 à 22, 24 à 29 et 60 sont des mp3 **VBR** (80–128 kbit/s, entête Xing) ; les 482 autres
+sont en CBR 128 kbit/s avec entête Info. Un saut (`currentTime`) dans un VBR passe par la table Xing (résolution 1 %) : erreur simulée
+sur le n° 1 de −1,4 s en moyenne, jusqu'à 6 s ; le surlignement suit `currentTime`, donc il est juste mais l'audio est ailleurs.
+Parade : réencoder ces fichiers en CBR 128 kbit/s (`ffmpeg -i f.mp3 -map 0:a -map 0:v? -c:a libmp3lame -b:a 128k -c:v copy -map_metadata 0
+-id3v2_version 3 -write_xing 1 sortie.mp3` : même durée à 10 ms près, pochette et étiquettes conservées). Pilote : `Darwin/Darwin-iPhone/mp3-cbr/`
+(n° 1 à 3), à essayer sur l'iPhone avant d'étendre aux autres monologues et aux originaux VBR (une soixantaine, n° 1–29, 39–41, 44–92…).
+Originaux : 388 sans entête mais en CBR 128 (l'iPhone estime alors la durée d'après la taille, étiquette de pochette comprise : +9 à +15 s).
+
 ### Entretien
 - Après chaque mise à jour de l'index : refaire `site/catalogue.json`, augmenter `VERSION`, pousser.
 - Après `transcrire_monologues.py --nettoyer` puis `construire_lecteur.py` (dossier Darwin) : refaire
