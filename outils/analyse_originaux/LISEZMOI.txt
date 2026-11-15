@@ -9,3 +9,4 @@ Les dossiers et le jour sont écrits en dur au début des scripts (~/mnt/Darwin,
   decalages.py, verif_mono.py, raccord35.py, refaire_monologues*.py : refaire un monologue à partir d'un nouvel original (décalage mesuré par partie
              conservée, raccord de 35), et vérifier le résultat. Ils attendent cmp.py et decalages.py dans le $HOME de la VM ; les sauvegardes sont dans
              Darwin/_avant_remplacement_20261115/ (journal.txt explique chaque épisode).
+  ATTENTION : refaire_monologues*.py ne recopient pas la pochette ; la remettre ensuite (ffmpeg -i monologue -i original -map 0:a -map 1:v -map_metadata 0 -c copy).

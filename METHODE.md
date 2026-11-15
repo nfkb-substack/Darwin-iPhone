@@ -129,7 +129,7 @@ phrase synchronisés ; conversion CBR de 51 mp3 ; `signalements.py`, `corriger.p
 11 mono 44,1 kHz avec souffle plat vers −21 dB de 14 à 20 kHz (30–38, 42, 43), 4 à 16 kHz mono coupés vers 5,75 kHz (39, 40, 41 à 24 kb/s ; 60 à 16 kb/s). Les nouveaux
 fichiers Radio France sont propres (stéréo 44,1 kHz 128 kb/s, sans souffle). Pour chaque épisode : ancien original, ancien monologue et ancien cache de coupes rangés dans
 `Darwin/_avant_remplacement_20261115/` (`journal.txt` explique chaque cas) ; nouvel original = audio Radio France + étiquettes et pochette de l'ancien fichier ; monologue refait
-**avec la chronologie de l'ancien** (donc sous-titres inchangés ; écart mesuré ≤ 0,1 s). Copies brutes de Radio France : `Darwin/_retelechargement_20261115/`.
+**avec la chronologie de l'ancien** (donc sous-titres inchangés ; écart mesuré ≤ 0,1 s). Copies brutes de Radio France : `Darwin/_retelechargement_20261115/`. Les monologues refaits n'ont pas la pochette au départ (la coupe ne recopie que le son) : elle a été remise depuis l'original (`ffmpeg -map 1:v`), à refaire pour tout nouveau monologue.
 - 32, 33, 38, 42 : alignés, mêmes coupes. 39, 40, 41 : pas de monologue (rediffusions), seul l'original change. 60 : monologue = lien dur vers l'original, refait en lien.
 - 43 : nouvel original en avance de 3,5 s (l'ancien commençait par une bande-annonce) → coupes décalées et 3,5 s de silence en tête.
 - 30, 31, 34, 36, 37 : Radio France a rallongé la musique (30 : 104 s, 31 : 2,6 s, 34 : 26 s, 36 : 126 s, 37 : 44 s), toujours dans un passage déjà coupé du monologue. Décalage mesuré à
