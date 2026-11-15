@@ -159,12 +159,7 @@ fichiers Radio France sont propres (stéréo 44,1 kHz 128 kb/s, sans souffle). P
 - Phrases « fantômes » : le texte de 36 (« Il est 11h05 à suivre sur les épaules de Darwin avec ») et de 43 (« A suivre sur les épaules de Darwin avec ») tombe sur le silence de tête. À supprimer
   un jour (un `.srt` retouché à la main ne doit pas changer de nombre de phrases : voir `corriger.py`).
 
-**À faire sur l'iPhone et le Mac** : réimporter dans l'app les monologues 30 à 38, 42, 43, 60 (nouveaux) et les 51 fichiers réencodés en CBR ; coller la clé de synchronisation sur le site privé du Mac
-si ce n'est pas fait ; réimporter `sous-titres-darwin.ndjson` seulement après une correction de texte (`corriger.py`). Retirer l'étiquette « mauvaise qualité » des épisodes remplacés si elle est posée
-(34–41 l'avaient reçue de Rémi).
-
-**Propositions en attente de Rémi** : suppression de `Darwin-iPhone/mp3-cbr/` (96 Mo, essai CBR, nécessite l'autorisation de supprimer) ; `_retelechargement_20261115/` et `_avant_remplacement_20261115/`
-(environ 2 Go) à garder le temps de vérifier à l'oreille. Autres originaux à qualité faible (non traités) : le n° 220 (stéréo 48 kHz, dynamique 38) ; aucun autre candidat net dans l'inventaire.
+La suite (réimport, nettoyage, vérifications) est dans « RESTE À FAIRE » ci-dessus.
 
 ### Étape 2 du plan général — émissions écoutées partagées avec le site privé : FAIT, mise en service à terminer
 Code écrit le 12 novembre, publié le 13 novembre. Détail des décisions de Rémi (stockage Vercel Blob, accès par la
