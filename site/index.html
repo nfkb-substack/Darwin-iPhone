@@ -68,6 +68,12 @@ table.fichiers { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.fichiers td { padding: 8px 0; border-bottom: 1px solid var(--trait); vertical-align: middle; }
 table.fichiers td:last-child { text-align: right; white-space: nowrap; }
 progress { width: 100%; }
+.etiqs { display: flex; gap: 6px 18px; flex-wrap: wrap; }
+.etiqs label.eco { margin: 2px 0; }
+#st p { position: relative; padding-right: 38px; }
+#st p::after { content: "⚐"; position: absolute; right: 8px; top: 6px; font: 17px/1.5 -apple-system, system-ui, sans-serif; color: var(--doux); opacity: .35; -webkit-user-select: none; user-select: none; }
+#st p.err::after { content: "⚑"; color: #c0392b; opacity: 1; }
+#st p.musique::after { content: none; }
 label.eco { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; min-height: 40px; }
 label.eco input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
 .ok { color: var(--accent); font-weight: 700; }
@@ -235,7 +241,7 @@ async function importer(fichiers) {
 }
 
 /* ---------- version de l'application ---------- */
-const VERSION_PAGE = 8;   // = numéro de VERSION dans sw.js
+const VERSION_PAGE = 9;   // = numéro de VERSION dans sw.js
 async function majApp() {   // dit pourquoi une mise à jour n'arrive pas (le plus souvent : connexion Vercel expirée)
   const etat = $("#verEtat"); etat.textContent = "Vérification…";
   if (navigator.onLine === false) { etat.textContent = "Pas de réseau."; return; }
@@ -258,7 +264,7 @@ async function majApp() {   // dit pourquoi une mise à jour n'arrive pas (le pl
 // État gardé dans la page : {n: {d, m}} ; d = jour d'écoute "AAAA-MM-JJ", ou null si l'émission a été décochée ;
 // m = date de modification (ms). Mêmes règles de fusion que le service api/ecoutees (api/_fusion.js) et que le site
 // privé du Mac : deux écoutes -> jour le plus ancien ; sinon la modification la plus récente l'emporte.
-const ecoFusion = (a, b) => !a ? b : !b ? a : a.d && b.d ? {d: a.d < b.d ? a.d : b.d, m: Math.max(a.m, b.m)} : b.m > a.m || (b.m === a.m && b.d) ? b : a;
+const ecoFusion = (a, b) => !a ? b : !b ? a : a.d && b.d ? {...(b.m > a.m ? b : a), d: a.d < b.d ? a.d : b.d, m: Math.max(a.m, b.m)} : b.m > a.m || (b.m === a.m && b.d) ? b : a;
 function ecoPropre(E) {
   const o = {};
   if (E && typeof E === "object" && !Array.isArray(E)) for (const [n, x] of Object.entries(E)) {
@@ -284,7 +290,7 @@ function ecoLireFichier(texte) {   // darwin-ecoutees.json : version 2 {e: {n: {
   const j = JSON.parse(texte);
   if (!j || typeof j !== "object" || j.format !== "darwin-ecoutees") throw new Error("ce fichier .json n'est pas un historique d'écoute darwin-ecoutees.json");
   let k;
-  if (j.v === 2 && j.e) k = ecoMeler(ecoPropre(j.e));
+  if (j.v === 2 && j.e) { k = ecoMeler(ecoPropre(j.e)); etqMeler(j); }
   else {
     const E = {}, t = Date.now();
     for (const [n, d] of Object.entries(j.ecoutees || {})) { if (!/^\d{1,5}$/.test(n) || typeof d !== "string" || !/^\d{4}-\d\d-\d\d/.test(d)) continue; const j2 = d.slice(0, 10), c = ecoutee(n); if (!c || j2 < c) E[n] = {d: j2, m: t}; }
@@ -293,16 +299,56 @@ function ecoLireFichier(texte) {   // darwin-ecoutees.json : version 2 {e: {n: {
   ecoRafraichir(); synchroBientot(); return k;
 }
 async function ecoExporter() {
-  const f = new File([JSON.stringify({format: "darwin-ecoutees", v: 2, e: ECO}, null, 1)], "darwin-ecoutees.json", {type: "application/json"});
+  const f = new File([JSON.stringify({format: "darwin-ecoutees", v: 2, e: ECO, ...ETQ}, null, 1)], "darwin-ecoutees.json", {type: "application/json"});
   try { if (navigator.canShare && navigator.canShare({files: [f]})) { await navigator.share({files: [f]}); return; } } catch (e) { if (e && e.name === "AbortError") return; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
+/* ---------- étiquettes (difficile, mauvaise qualité) et phrases signalées ---------- */
+// Même principe que les émissions écoutées, mêmes règles de fusion (api/_fusion.js), synchronisées dans le même document.
+//   difficile : thème difficile pour moi          (clé = n° d'émission)
+//   qualite   : mauvaise qualité audio            (clé = n° d'émission ; à retélécharger)
+//   err       : phrase du transcript à corriger   (clé = "n°:indice de la phrase", t = instant de la phrase dans le monologue)
+// Le texte du transcript n'est jamais envoyé : seuls partent le n° et l'indice.
+const ETQ_RE = {difficile: /^\d{1,5}$/, qualite: /^\d{1,5}$/, err: /^\d{1,5}:\d{1,5}$/};
+function etqPropre(sec, E) {
+  const o = {}; let k = 0;
+  if (E && typeof E === "object" && !Array.isArray(E)) for (const [c, x] of Object.entries(E)) {
+    if (!ETQ_RE[sec].test(c) || !x || typeof x !== "object" || ++k > 5000) continue;
+    o[c] = {d: typeof x.d === "string" && /^\d{4}-\d\d-\d\d$/.test(x.d) ? x.d : null, m: Number.isFinite(x.m) && x.m > 0 ? Math.floor(x.m) : 0};
+    if (Number.isFinite(x.t) && x.t >= 0 && x.t < 1e5) o[c].t = Math.round(x.t * 10) / 10;
+  }
+  return o;
+}
+const ETQ = {};
+{ const bru = mem.get("darwin-etiq1", {}); for (const sec of Object.keys(ETQ_RE)) ETQ[sec] = etqPropre(sec, bru && bru[sec]); }
+const etqSauver = () => mem.set("darwin-etiq1", ETQ);
+const etqDate = (sec, c) => ETQ[sec][c] && ETQ[sec][c].d || null;
+const etqNb = sec => Object.values(ETQ[sec]).filter(x => x.d).length;
+function etqPoser(sec, c, oui, t) {
+  if (!!etqDate(sec, c) === !!oui) return;
+  ETQ[sec][c] = {d: oui ? ecoJour() : null, m: Date.now(), ...(t != null ? {t} : {})}; etqSauver(); ecoRafraichir(); synchroBientot();
+}
+function etqMeler(j) {   // fusionne les sections d'un document reçu (service ou fichier) ; rend le nombre de changements
+  let k = 0;
+  for (const sec of Object.keys(ETQ_RE)) for (const [c, x] of Object.entries(etqPropre(sec, j && j[sec]))) {
+    const a = ETQ[sec][c], v = ecoFusion(a, x);
+    if (!a || v.d !== a.d || v.m !== a.m) { if (!a || v.d !== a.d) k++; ETQ[sec][c] = v; }
+  }
+  etqSauver(); return k;
+}
+const etqPhrase = () => { const d = etqNb("difficile"), q = etqNb("qualite"), e = etqNb("err"); return `${d} difficile${d > 1 ? "s" : ""}, ${q} à mauvaise qualité audio, ${e} phrase${e > 1 ? "s" : ""} signalée${e > 1 ? "s" : ""}.`; };
 let dessinerListe = null;
 function ecoRafraichir() {   // après un changement (case, fin de lecture, synchronisation, import) : met à jour ce qui est affiché
   const m = /^#e(\d+)/.exec(location.hash), c = $("#eco");
   if (vueCourante === "ep" && m && c) { const d = ecoutee(+m[1]); c.checked = !!d; $("#ecoDate").textContent = d ? "(le " + dateFr(d) + ")" : ""; }
   else if (vueCourante === "liste" && dessinerListe && $("#liste")) dessinerListe();
+  if (vueCourante === "ep" && m) {
+    if ($("#etqDif")) $("#etqDif").checked = !!etqDate("difficile", m[1]);
+    if ($("#etqQua")) $("#etqQua").checked = !!etqDate("qualite", m[1]);
+    document.querySelectorAll("#st p[data-i]").forEach(p => p.classList.toggle("err", !!etqDate("err", m[1] + ":" + p.dataset.i)));
+  }
   if ($("#ecoNb")) $("#ecoNb").textContent = ecoPhrase();
+  if ($("#etqNb")) $("#etqNb").textContent = etqPhrase();
   if ($("#synEtat")) $("#synEtat").textContent = SYN.etat;
 }
 const ecoPhrase = () => { const k = ecoNb(); return k + " émission" + (k > 1 ? "s écoutées" : " écoutée") + " en entier."; };
@@ -319,10 +365,10 @@ async function synchro() {
   SYN.enCours = true; clearTimeout(SYN.minuteur);
   const cle = mem.get("darwin-synchro-cle", "");
   try {
-    const r = await fetch("api/ecoutees" + (cle ? "?x-vercel-protection-bypass=" + encodeURIComponent(cle) : ""), {method: "POST", headers: {"content-type": "text/plain"}, body: JSON.stringify({format: "darwin-ecoutees", v: 2, e: ECO}), cache: "no-store", redirect: "error"});
+    const r = await fetch("api/ecoutees" + (cle ? "?x-vercel-protection-bypass=" + encodeURIComponent(cle) : ""), {method: "POST", headers: {"content-type": "text/plain"}, body: JSON.stringify({format: "darwin-ecoutees", v: 2, e: ECO, ...ETQ}), cache: "no-store", redirect: "error"});
     if (!r.ok || !/json/.test(r.headers.get("content-type") || "")) throw Object.assign(new Error("refus"), {code: r.status});
     const j = await r.json(); if (!j || j.v !== 2) throw new Error("réponse inattendue");
-    ecoMeler(ecoPropre(j.e)); SYN.dernier = Date.now();
+    ecoMeler(ecoPropre(j.e)); etqMeler(j); SYN.dernier = Date.now();
     SYN.etat = "Synchronisé à " + new Date().toLocaleTimeString("fr-FR", {hour: "2-digit", minute: "2-digit"}) + ".";
   } catch (e) {
     SYN.etat = navigator.onLine === false ? "Hors ligne : la synchronisation se fera au retour du réseau."
@@ -466,20 +512,22 @@ function vueListe() {
   $("#titre").textContent = "Sur les épaules de Darwin"; $("#retour").hidden = true; $("#versGestion").hidden = false;
   const seul = mem.get("seul", false) && META.size > 0, neuf = mem.get("neuf", false), q = mem.get("q", "");
   $("#vue").innerHTML = `<input type="search" id="q" placeholder="Titre, numéro ou année" value="${esc(q)}" autocomplete="off" autocorrect="off">
-    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button><button class="btn" id="fListes">Playlists (${LISTES.size})</button><button class="btn" id="fNeuf" aria-pressed="${neuf}">Pas encore écoutées</button></div>
+    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button><button class="btn" id="fListes">Playlists (${LISTES.size})</button><button class="btn" id="fNeuf" aria-pressed="${neuf}">Pas encore écoutées</button>${etqNb("difficile") ? `<button class="btn" id="fDif" aria-pressed="${mem.get("fdif", false)}">Difficiles (${etqNb("difficile")})</button>` : ""}${etqNb("qualite") ? `<button class="btn" id="fQua" aria-pressed="${mem.get("fqua", false)}">Mauvaise qualité (${etqNb("qualite")})</button>` : ""}</div>
     ${META.size ? "" : `<div class="info">Aucun fichier audio sur cet iPhone pour l'instant. <button class="lien" id="aller">Importer des émissions</button></div>`}
     <p class="doux" id="compte"></p><ul class="liste" id="liste"></ul>`;
   const dessiner = () => {
     const mots = sansAccent($("#q").value.trim()).split(/\s+/).filter(Boolean), seulement = mem.get("seul", false) && META.size > 0, neuves = mem.get("neuf", false);
-    const l = CAT.filter(e => (!seulement || a(e.n, "m") || a(e.n, "o")) && (!neuves || !ecoutee(e.n)) && mots.every(m => (e._c || (e._c = sansAccent(`${e.t} n${e.n} ${e.n} ${e.d.slice(0, 4)}`))).includes(m)));
+    const l = CAT.filter(e => (!seulement || a(e.n, "m") || a(e.n, "o")) && (!neuves || !ecoutee(e.n)) && (!mem.get("fdif", false) || etqDate("difficile", e.n)) && (!mem.get("fqua", false) || etqDate("qualite", e.n)) && mots.every(m => (e._c || (e._c = sansAccent(`${e.t} n${e.n} ${e.n} ${e.d.slice(0, 4)}`))).includes(m)));
     $("#compte").textContent = l.length + (l.length > 1 ? " diffusions" : " diffusion");
-    $("#liste").innerHTML = l.map(e => `<li><a href="#e${e.n}"><div class="t">${ecoutee(e.n) ? '<span class="ok" title="Écoutée en entier">✓ </span>' : ""}${esc(e.t)}</div><div class="s">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? " · rediffusion du n° " + e.p : ""}${a(e.n, "m") ? '<span class="pastille">M</span>' : ""}${a(e.n, "o") ? '<span class="pastille">O</span>' : ""}</div></a></li>`).join("") || `<li class="doux" style="padding:12px 0">Aucune émission ne correspond.</li>`;
+    $("#liste").innerHTML = l.map(e => `<li><a href="#e${e.n}"><div class="t">${ecoutee(e.n) ? '<span class="ok" title="Écoutée en entier">✓ </span>' : ""}${esc(e.t)}</div><div class="s">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? " · rediffusion du n° " + e.p : ""}${a(e.n, "m") ? '<span class="pastille">M</span>' : ""}${a(e.n, "o") ? '<span class="pastille">O</span>' : ""}${etqDate("difficile", e.n) ? '<span class="pastille">difficile</span>' : ""}${etqDate("qualite", e.n) ? '<span class="pastille">qualité</span>' : ""}</div></a></li>`).join("") || `<li class="doux" style="padding:12px 0">Aucune émission ne correspond.</li>`;
   };
   $("#q").oninput = () => { mem.set("q", $("#q").value); dessiner(); };
   $("#fTous").onclick = () => { mem.set("seul", false); vueListe(); };
   $("#fSeul").onclick = () => { mem.set("seul", true); vueListe(); };
   $("#fListes").onclick = () => { location.hash = "#listes"; };
   $("#fNeuf").onclick = () => { mem.set("neuf", !mem.get("neuf", false)); vueListe(); };
+  if ($("#fDif")) $("#fDif").onclick = () => { mem.set("fdif", !mem.get("fdif", false)); vueListe(); };
+  if ($("#fQua")) $("#fQua").onclick = () => { mem.set("fqua", !mem.get("fqua", false)); vueListe(); };
   if ($("#aller")) $("#aller").onclick = () => { location.hash = "#fichiers"; };
   dessinerListe = dessiner; dessiner();
   const y = mem.get("defil", 0); if (y) scrollTo(0, y);
@@ -505,6 +553,7 @@ async function vueEpisode(n, kDemande) {
   const urlP = poch ? URL.createObjectURL(poch) : "";
   $("#vue").innerHTML = `<div class="entete">${urlP ? `<img src="${urlP}" alt="">` : ""}<div><div class="doux">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? ` · rediffusion du <a class="lien" href="#e${e.p}">n° ${e.p}</a>` : ""}</div><h2>${esc(e.t)}</h2></div></div>
     <label class="eco"><input type="checkbox" id="eco" ${ecoutee(n) ? "checked" : ""}> Écoutée en entier <span class="doux" id="ecoDate">${ecoutee(n) ? "(le " + dateFr(ecoutee(n)) + ")" : ""}</span></label>
+    <div class="etiqs"><label class="eco"><input type="checkbox" id="etqDif" ${etqDate("difficile", n) ? "checked" : ""}> Thème difficile</label><label class="eco"><input type="checkbox" id="etqQua" ${etqDate("qualite", n) ? "checked" : ""}> Mauvaise qualité audio</label></div>
     ${ctx ? `<div class="info" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><a class="lien" href="#l${encodeURIComponent(ctx.id)}">${esc(ctx.pl.titre)}</a><div class="doux">${ctx.i + 1} / ${ctx.pl.items.length}</div></div><button class="btn" id="plPrec" aria-label="Émission précédente de la playlist" ${voisinListe(ctx, -1) < 0 ? "disabled" : ""}>‹</button><button class="btn" id="plSuiv" aria-label="Émission suivante de la playlist" ${voisinListe(ctx, 1) < 0 ? "disabled" : ""}>›</button></div>` : ""}
     <div class="versions">${["m", "o"].map(x => `<button class="btn ${a(n, x) ? "" : "absent"}" data-k="${x}" aria-pressed="${k === x}">${NOM[x]}${a(n, x) ? "" : " (absent)"}</button>`).join("")}</div>
     ${alerte}
@@ -515,8 +564,10 @@ async function vueEpisode(n, kDemande) {
     ${resume ? `<h3>Résumé</h3><p class="resume">${esc(resume)}</p>` : `<p class="doux">Cette émission n'a pas encore de résumé dans l'index.</p>`}
     ${meta && meta.notes ? `<details><summary>Notes du fichier (références, musiques)</summary><pre class="notes">${esc(meta.notes)}</pre></details>` : ""}
     ${e.u ? `<p><a class="lien" href="${esc(e.u)}" target="_blank" rel="noopener">Page de l'émission sur Radio France ↗</a></p>` : ""}
-    ${k ? `<h3>Texte de l'émission</h3>${st ? `<div id="st"><p class="musique doux" id="musique" hidden>♪ musique</p>${st.s.map(([, t], i) => `<p data-i="${i}">${esc(t)}</p>`).join("")}</div>` : `<p class="doux">Les sous-titres de cette émission ne sont pas sur l'iPhone. Ils s'importent en une fois depuis la page <a class="lien" href="#fichiers">Fichiers</a>.</p>`}` : ""}`;
+    ${k ? `<h3>Texte de l'émission</h3>${st ? `<div id="st"><p class="musique doux" id="musique" hidden>♪ musique</p>${st.s.map(([, t], i) => `<p data-i="${i}"${etqDate("err", n + ":" + i) ? ' class="err"' : ""}>${esc(t)}</p>`).join("")}</div>` : `<p class="doux">Les sous-titres de cette émission ne sont pas sur l'iPhone. Ils s'importent en une fois depuis la page <a class="lien" href="#fichiers">Fichiers</a>.</p>`}` : ""}`;
   $("#eco").onchange = ev => ecoPoser(n, ev.target.checked);
+  $("#etqDif").onchange = ev => etqPoser("difficile", String(n), ev.target.checked);
+  $("#etqQua").onchange = ev => etqPoser("qualite", String(n), ev.target.checked);
   document.querySelectorAll(".versions .btn").forEach(b => b.onclick = () => { location.hash = "#e" + n + b.dataset.k; });
   if (ctx) { $("#plPrec").onclick = () => allerDansListe(ctx.id, voisinListe(ctx, -1), !audio.paused); $("#plSuiv").onclick = () => allerDansListe(ctx.id, voisinListe(ctx, 1), !audio.paused); }
   if (!k) return;
@@ -547,7 +598,11 @@ async function vueEpisode(n, kDemande) {
   // (sélection présente avant le toucher, ou appui long).
   let selAvant = false, debutToucher = 0;
   if ($("#st")) $("#st").addEventListener("pointerdown", () => { const s = getSelection(); selAvant = !!s && !s.isCollapsed; debutToucher = Date.now(); });
-  if ($("#st")) $("#st").onclick = ev => { const s = getSelection(), occupe = selAvant || (s && !s.isCollapsed) || Date.now() - debutToucher > 500; selAvant = false; if (occupe) return;
+  // Drapeau ⚐/⚑ en haut à droite de chaque phrase (pseudo-élément : le texte, la copie et l'ordre des phrases ne changent pas).
+  // Un toucher dans ce coin signale (ou retire) la phrase, sans déplacer l'audio.
+  if ($("#st")) $("#st").onclick = ev => { const p0 = ev.target.closest("p[data-i]");
+    if (p0 && st) { const b = p0.getBoundingClientRect(); if (ev.clientX >= b.right - 40 && ev.clientY <= b.top + 40) { selAvant = false; const i = +p0.dataset.i, oui = !p0.classList.contains("err"); p0.classList.toggle("err", oui); etqPoser("err", n + ":" + i, oui, st.s[i][0]); return; } }
+    const s = getSelection(), occupe = selAvant || (s && !s.isCollapsed) || Date.now() - debutToucher > 500; selAvant = false; if (occupe) return;
     const p = ev.target.closest("p[data-i]"); if (!p || !EN_COURS.st) return; audio.currentTime = depuisMono(EN_COURS.st.s[+p.dataset.i][0]); defilementManuel = 0; audio.play().catch(() => {}); };
   EN_COURS.ligne = -2; majLecteur();
 }
@@ -564,6 +619,7 @@ async function vueFichiers() {
     <p class="doux">${l.length} fichier${l.length > 1 ? "s" : ""} audio, ${taille(tot)}. Sous-titres : ${ST.size} émission${ST.size > 1 ? "s" : ""}.${place}</p>
     <h3>Émissions écoutées</h3>
     <p><span id="ecoNb">${ecoPhrase()}</span> Elles sont partagées avec le site privé du Mac. <span class="doux" id="synEtat">${esc(SYN.etat)}</span></p>
+    <p class="doux" id="etqNb">${etqPhrase()}</p>
     <p><button class="btn" id="synGo">Synchroniser</button> <button class="btn" id="ecoExp">Exporter</button></p>
     <details ${mem.get("darwin-synchro-cle", "") ? "" : "open"}><summary>Clé de synchronisation</summary>
       <p class="doux">Clé du projet Vercel darwin-iphone (Settings › Deployment Protection › Protection Bypass for Automation), la même que sur le Mac. Elle reste sur cet iPhone.</p>
