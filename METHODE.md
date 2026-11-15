@@ -1,6 +1,6 @@
 # Darwin-iPhone — méthode et reprise du travail
 
-Écrit le 13 novembre 2026 pour reprendre le travail dans une conversation neuve.
+Écrit le 13 novembre 2026 pour reprendre le travail dans une conversation neuve ; état mis à jour le 15 novembre au soir (section « À faire »).
 Le mode d'emploi pour l'utilisateur est dans `README.md` ; ce fichier-ci s'adresse à celui qui développe.
 
 ## Démarrer une nouvelle conversation
@@ -120,7 +120,26 @@ données du site dans les réglages de Safari (les mp3 importés seraient perdus
 
 ## À faire
 
-### Point d'étape du 15 novembre 2026 au soir — reprendre ici
+### ÉTAT AU 15 NOVEMBRE 2026, 20 H — À JOUR ; reste ci-dessous (reprendre ici)
+**Tout ce qui était engagé est terminé** : app version 9 en ligne (étiquettes « difficile » / « mauvaise qualité », drapeau de phrase, synchronisation), site privé reconstruit,
+51 mp3 convertis en CBR, outils `retelecharger.py` / `signalements.py` / `corriger.py`, et **originaux 30 à 43 et 60 remplacés par les versions Radio France** avec leurs monologues refaits
+(sous-titres inchangés, pochettes remises ; détail plus bas). Rémi a retiré les étiquettes « mauvaise qualité » des épisodes remplacés. Plus aucun épisode connu de mauvaise qualité,
+sauf la seconde moitié du n° 35 et, un peu faible, le n° 220.
+
+**RESTE À FAIRE — rien d'urgent, rien de bloquant**
+1. **Rémi, au fil de l'écoute** : réimporter dans l'app les monologues 30 à 38, 42, 43, 60 et les 51 fichiers CBR (Fichiers › importer), seulement quand il veut les écouter. Les anciens restent utilisables d'ici là
+   (CBR : le saut en arrière reste approximatif tant que le fichier VBR n'est pas remplacé).
+2. **Rémi, sur l'iPhone réel** (jamais testé sous Safari iOS) : connexion Vercel depuis l'icône ; commandes et enchaînement d'une playlist écran verrouillé ; import d'un lot de 5 à 10 mp3 ; usage sans réseau ;
+   décalage après un saut en arrière avec un fichier CBR ; dessin et toucher du drapeau ⚐ dans le texte.
+3. **Rémi, si ce n'est pas fait** : coller la clé de synchronisation (Fichiers › « Clé de synchronisation » sur l'iPhone ; « Clé… » dans le Catalogue du site privé du Mac). Sans elle : « Pas de synchronisation… ».
+4. **Facultatif — n° 35** : sa seconde moitié reste de l'ancienne qualité (Radio France ne propose que 26,6 min). Voir sur la page de l'émission sur radiofrance.fr si la suite existe sous une autre adresse.
+5. **Facultatif — phrases fantômes** : première phrase du texte des n° 36 et 43 (bande-annonce absente du nouvel audio, remplacée par du silence) à supprimer via `corriger.py` ou à la main.
+6. **Nettoyage, avec l'autorisation de Rémi (la suppression demande une permission)** : `Darwin-iPhone/mp3-cbr/` (96 Mo), `Darwin/_retelechargement_20261115/` (0,7 Go) et `Darwin/_avant_remplacement_20261115/` (1 Go) après vérification à l'oreille,
+   `Darwin/_avant_cbr_20261115/`, et les restes listés sous « Entretien ».
+7. **Quand Rémi aura posé des drapeaux de phrase** : `signalements.py` pour lire, `corriger.py` pour corriger, puis réimporter `sous-titres-darwin.ndjson` dans l'app.
+8. **Hors de ce dépôt** (plan des sites, `Darwin/site_construction/PLAN.md`) : étapes 5 (parcours atypiques) et 6 (une page par émission), et la liste « En attente côté Rémi » (craquement en début de monologue, corrections de noms, etc.).
+
+### Détail du remplacement des originaux et des outils du 15 novembre 2026
 **Fait aujourd'hui** (app version 9 en ligne, site privé reconstruit, outils sur le Mac) : étiquettes « difficile » / « mauvaise qualité » et drapeaux de
 phrase synchronisés ; conversion CBR de 51 mp3 ; `signalements.py`, `corriger.py`, `retelecharger.py` (corrigé : la relance passe aux suivantes, dossier affiché) ;
 **retéléchargement chez Radio France et remplacement des originaux 30 à 43 et 60** (détail ci-dessous).
