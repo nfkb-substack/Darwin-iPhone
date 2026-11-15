@@ -58,5 +58,6 @@ autres fichiers (et dans le site privé).
 
 `node essai.js` (Playwright) : import de vrais extraits, lecture, sous-titres, messages d'absence, hors ligne.
 `node essai_playlist.js <dossier des extraits> <playlist.m3u8>` : import, affichage et enchaînement d'une playlist.
+`node essai_texte.js` : synchronisation du texte (sélection, reprise après pause, retour au premier plan).
 `node essai_vitesse.js` : vitesses de lecture et groupe des premières émissions (sans extraits).
 `node essai_ecoutees.js` : émissions écoutées et synchronisation entre deux appareils (magasin simulé, sans Vercel).

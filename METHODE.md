@@ -43,7 +43,7 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - `site/index.html` : toute l'application (HTML, CSS, JS, ~38 Ko).
 - `site/sw.js` : service worker. La réserve répond d'abord (la page s'ouvre sans réseau, même si la connexion
   Vercel a expiré), une copie fraîche est demandée en arrière-plan et sert à l'ouverture suivante.
-  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-7`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
+  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-8`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
   ne passent jamais par la réserve.
 - `site/catalogue.json` : 612 diffusions (n°, date, titre, première diffusion, lien Radio France, résumé de la fiche).
 - `site/api/ecoutees.js` + `_fusion.js`, `site/package.json` : service de l'historique d'écoute (voir plus bas).
@@ -79,6 +79,11 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
   Fichiers (synchroniser, exporter, clé). **Synchronisation** (`synchro`) : POST vers `api/ecoutees` après chaque
   changement (délai 1,5 s), au retour du réseau, à l'ouverture et au retour au premier plan. Sans réseau, l'état
   reste dans la page et part plus tard.
+- **Texte synchronisé** (`majLecteur`, `recaler`) : la phrase surlignée est celle dont le début précède `versMono(currentTime)`.
+  Recalé à chaque `play` (le texte revient à la phrase lue), au retour au premier plan et à `pageshow` (iOS fige la page :
+  le surlignement pouvait rester sur l'ancienne phrase). Un toucher sur une phrase déplace l'audio, sauf s'il y avait une
+  sélection avant le toucher ou s'il dure plus de 500 ms (sélection / copie de texte). Signalé le 15 novembre : décalages
+  après une pause ou une copie de texte ; causes probables traitées ici, **non reproduites sur iPhone réel**.
 - **Version / mise à jour** (`majApp`, page Fichiers) : affiche `VERSION_PAGE` et compare avec `sw.js` du serveur ; dit si le
   serveur refuse l'accès (connexion Vercel expirée), si une version plus récente est disponible (`reg.update()`).
   **Piège connu** : la page s'ouvre depuis la réserve, donc sans jamais redemander la connexion Vercel ; si le cookie
@@ -92,6 +97,7 @@ Dans le dossier du projet, avec Playwright :
 - `node essai.js` : import de vrais extraits, lecture, sous-titres, correspondance original/monologue, messages
   d'absence, fonctionnement hors ligne (fenêtre de la taille d'un iPhone SE).
 - `node essai_playlist.js <dossier des extraits> <playlist.m3u8>` : import, affichage, enchaînement d'une playlist.
+- `node essai_texte.js` : sélection sans déplacer l'audio, reprise après pause, retour au premier plan (40 phrases, wav factice).
 - `node essai_vitesse.js` : vitesses, groupe du début, retenue après rechargement, lecture ralentie, vérification de version, largeur 320 px (sans extraits).
 - `node essai_ecoutees.js` : écoutées et synchronisation entre deux « appareils », avec le vrai `api/ecoutees.js` et un
   magasin Blob simulé en mémoire (aucun appel à Vercel ; Playwright suffit, pas d'extraits à fournir).

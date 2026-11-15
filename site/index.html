@@ -235,7 +235,7 @@ async function importer(fichiers) {
 }
 
 /* ---------- version de l'application ---------- */
-const VERSION_PAGE = 7;   // = numéro de VERSION dans sw.js
+const VERSION_PAGE = 8;   // = numéro de VERSION dans sw.js
 async function majApp() {   // dit pourquoi une mise à jour n'arrive pas (le plus souvent : connexion Vercel expirée)
   const etat = $("#verEtat"); etat.textContent = "Vérification…";
   if (navigator.onLine === false) { etat.textContent = "Pas de réseau."; return; }
@@ -406,6 +406,12 @@ function majLecteur() {
   if (p) { p.classList.add("ici"); if (Date.now() - defilementManuel > 6000 && !audio.paused) p.scrollIntoView({block: "center", behavior: "smooth"}); }
 }
 ["timeupdate", "play", "pause", "loadedmetadata", "seeked"].forEach(ev => audio.addEventListener(ev, majLecteur));
+// Recalage du texte sur l'audio : à la reprise après une pause (le texte revient à la phrase lue, même si on l'a fait défiler
+// ou sélectionné entre-temps) et au retour au premier plan (iOS fige la page : le surlignement pouvait rester sur l'ancienne phrase).
+const recaler = () => { if (EN_COURS) { EN_COURS.ligne = -2; majLecteur(); } };
+audio.addEventListener("play", () => { defilementManuel = 0; recaler(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") recaler(); });
+addEventListener("pageshow", recaler);
 audio.addEventListener("ended", () => { if (EN_COURS) { mem.set("pos:" + EN_COURS.cle, 0); ecoPoser(EN_COURS.n, true); } });
 addEventListener("touchmove", () => { defilementManuel = Date.now(); }, {passive: true});
 addEventListener("wheel", () => { defilementManuel = Date.now(); }, {passive: true});
@@ -537,7 +543,12 @@ async function vueEpisode(n, kDemande) {
   const c = $("#curseur");
   c.oninput = () => { c.dataset.tenu = "1"; $("#tps").textContent = hms(+c.value); };
   c.onchange = () => { audio.currentTime = +c.value; delete c.dataset.tenu; };
-  if ($("#st")) $("#st").onclick = ev => { const p = ev.target.closest("p[data-i]"); if (!p || !EN_COURS.st) return; audio.currentTime = depuisMono(EN_COURS.st.s[+p.dataset.i][0]); defilementManuel = 0; audio.play().catch(() => {}); };
+  // Un toucher sur une phrase y emmène l'audio, sauf s'il sert à sélectionner, copier ou désélectionner du texte
+  // (sélection présente avant le toucher, ou appui long).
+  let selAvant = false, debutToucher = 0;
+  if ($("#st")) $("#st").addEventListener("pointerdown", () => { const s = getSelection(); selAvant = !!s && !s.isCollapsed; debutToucher = Date.now(); });
+  if ($("#st")) $("#st").onclick = ev => { const s = getSelection(), occupe = selAvant || (s && !s.isCollapsed) || Date.now() - debutToucher > 500; selAvant = false; if (occupe) return;
+    const p = ev.target.closest("p[data-i]"); if (!p || !EN_COURS.st) return; audio.currentTime = depuisMono(EN_COURS.st.s[+p.dataset.i][0]); defilementManuel = 0; audio.play().catch(() => {}); };
   EN_COURS.ligne = -2; majLecteur();
 }
 async function vueFichiers() {
