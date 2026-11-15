@@ -122,35 +122,30 @@ données du site dans les réglages de Safari (les mp3 importés seraient perdus
 
 ### Point d'étape du 15 novembre 2026 au soir — reprendre ici
 **Fait aujourd'hui** (app version 9 en ligne, site privé reconstruit, outils sur le Mac) : étiquettes « difficile » / « mauvaise qualité » et drapeaux de
-phrase synchronisés ; conversion CBR de 51 mp3 ; `signalements.py`, `corriger.py`, `retelecharger.py` (corrigé : la relance passe aux suivantes, dossier affiché).
+phrase synchronisés ; conversion CBR de 51 mp3 ; `signalements.py`, `corriger.py`, `retelecharger.py` (corrigé : la relance passe aux suivantes, dossier affiché) ;
+**retéléchargement chez Radio France et remplacement des originaux 30 à 43 et 60** (détail ci-dessous).
 
-**Retéléchargement des mauvaises qualités.** Rémi a étiqueté 34–41. Inventaire des 593 originaux (`outils/analyse_originaux/`) : 326 stéréo 44,1 kHz,
-252 stéréo 48 kHz, 11 mono 44,1 kHz avec souffle plat vers −21 dB de 14 à 20 kHz (30–38, 42, 43), 4 à 16 kHz mono coupés vers 5,75 kHz (39, 40, 41 à 24 kb/s ; 60 à 16 kb/s).
-Candidats non étiquetés : 30, 31, 32, 33, 42, 43, 60 (et 220, un peu faible en dynamique). Les nouveaux fichiers Radio France sont propres (stéréo 44,1 kHz 128 kb/s, sans souffle).
-Téléchargés dans `Darwin/_retelechargement_20261115/` : 30 à 43 et 60 (tous). Comparaison faite avec `outils/analyse_originaux/cmp.py` (voir `LISEZMOI.txt`).
+**Remplacement des originaux (terminé le 15 novembre).** Inventaire des 593 originaux (`outils/analyse_originaux/`) : 326 stéréo 44,1 kHz, 252 stéréo 48 kHz,
+11 mono 44,1 kHz avec souffle plat vers −21 dB de 14 à 20 kHz (30–38, 42, 43), 4 à 16 kHz mono coupés vers 5,75 kHz (39, 40, 41 à 24 kb/s ; 60 à 16 kb/s). Les nouveaux
+fichiers Radio France sont propres (stéréo 44,1 kHz 128 kb/s, sans souffle). Pour chaque épisode : ancien original, ancien monologue et ancien cache de coupes rangés dans
+`Darwin/_avant_remplacement_20261115/` (`journal.txt` explique chaque cas) ; nouvel original = audio Radio France + étiquettes et pochette de l'ancien fichier ; monologue refait
+**avec la chronologie de l'ancien** (donc sous-titres inchangés ; écart mesuré ≤ 0,1 s). Copies brutes de Radio France : `Darwin/_retelechargement_20261115/`.
+- 32, 33, 38, 42 : alignés, mêmes coupes. 39, 40, 41 : pas de monologue (rediffusions), seul l'original change. 60 : monologue = lien dur vers l'original, refait en lien.
+- 43 : nouvel original en avance de 3,5 s (l'ancien commençait par une bande-annonce) → coupes décalées et 3,5 s de silence en tête.
+- 30, 31, 34, 36, 37 : Radio France a rallongé la musique (30 : 104 s, 31 : 2,6 s, 34 : 26 s, 36 : 126 s, 37 : 44 s), toujours dans un passage déjà coupé du monologue. Décalage mesuré à
+  chaque partie conservée (`refaire_monologues_3.py`) ; la voix reprend bien à 44:14 (30), 46:24 (36), 47:57 (37) dans le nouvel original. 36 : 5 s de silence en tête.
+- **35 : hybride.** La version de Radio France ne dure que 26,6 min (première moitié). Nouvel original = nouvelle version jusqu'à 24:44 (dans une pause entre deux phrases) puis l'ancien
+  fichier (mono, avec souffle, passé en stéréo). Monologue refait avec les mêmes coupes. **Sa seconde moitié reste donc de l'ancienne qualité** ; à voir si la page Radio France de l'émission
+  propose la suite sous une autre adresse (non vérifié, radiofrance.fr est refusé depuis l'espace de travail de Claude).
+- Phrases « fantômes » : le texte de 36 (« Il est 11h05 à suivre sur les épaules de Darwin avec ») et de 43 (« A suivre sur les épaules de Darwin avec ») tombe sur le silence de tête. À supprimer
+  un jour (un `.srt` retouché à la main ne doit pas changer de nombre de phrases : voir `corriger.py`).
 
-**Remplacés le 15 novembre : 32, 33, 38, 39, 40, 41, 42, 43, 60** (nouvel audio aligné sur l'ancien à 0,5 s près, sous-titres inchangés). Anciens fichiers, anciens monologues et caches de coupes
-dans `Darwin/_avant_remplacement_20261115/` (journal et `refaire_monologues.py` dedans). Nouveaux originaux = audio Radio France + étiquettes et pochette de l'ancien fichier.
-Monologues 32, 33, 38 refaits avec exactement les mêmes coupes, en CBR 128 kb/s avec entête Info. 33 : 37 s ajoutées en fin chez Radio France, écartées. 39, 40, 41 : pas de monologue
-(rediffusions non traitées), seul l'original change. 42 : mêmes coupes. 60 : le monologue est un lien dur vers l'original, refait en lien. 43 : le nouvel original est en avance de 3,5 s (l'ancien commençait par 3,5 s de bande-annonce) : coupes décalées de −3,5 s et 3,5 s de silence au début, écart final 0,1 s ; la première phrase du texte (« A suivre sur les épaules de Darwin avec ») tombe sur ce silence, à supprimer un jour.
+**À faire sur l'iPhone et le Mac** : réimporter dans l'app les monologues 30 à 38, 42, 43, 60 (nouveaux) et les 51 fichiers réencodés en CBR ; coller la clé de synchronisation sur le site privé du Mac
+si ce n'est pas fait ; réimporter `sous-titres-darwin.ndjson` seulement après une correction de texte (`corriger.py`). Retirer l'étiquette « mauvaise qualité » des épisodes remplacés si elle est posée
+(34–41 l'avaient reçue de Rémi).
 
-**Pas touchés, décision à prendre** — la nouvelle version contient des blocs absents de l'ancienne, donc les sous-titres glisseraient après le bloc :
-| n° | bloc ajouté dans la NOUVELLE version (de … à …) |
-|---|---|
-| 30 | 104 s, de 42:29 à 44:13, puis +43 s en fin de fichier |
-| 31 | 3 s, de 19:59 à 20:02 (suite décalée de 2,3 s), +42 s en fin |
-| 34 | 26 s, de 43:50 à 44:16 |
-| 36 | début décalé de −5 s, 131 s de 44:04 à 46:15 |
-| 37 | 45 s, de 47:05 à 47:50, +26 s en fin |
-| 35 | la nouvelle version ne dure que 26,6 min (première moitié seulement) : ne pas remplacer |
-Instants lus par corrélation d'enveloppe (temps de la nouvelle version, `_retelechargement_20261115/`) : écouter ces plages pour savoir si c'est une annonce, une chronique ou du contenu manquant
-à l'ancienne. Si c'est du contenu à garder : refaire monologue, transcription et sous-titres de l'épisode ; sinon, couper le bloc dans le nouvel original avant d'en refaire le monologue.
-
-**À faire sur l'iPhone et le Mac** : réimporter dans l'app les monologues 32, 33, 38, 42, 43, 60 (nouveaux) et les 51 fichiers réencodés en CBR ; coller la clé de synchronisation sur le site privé du Mac
-si ce n'est pas fait ; réimporter `sous-titres-darwin.ndjson` seulement après une correction de texte (`corriger.py`).
-
-**Propositions en attente de Rémi** : fichier d'import qui étiquette 30 et 31 en « mauvaise qualité » (tant qu'ils ne sont pas remplacés ; 32, 33, 42, 43, 60 sont réglés) ; suppression de `Darwin-iPhone/mp3-cbr/` (96 Mo, essai CBR, nécessite
-l'autorisation de supprimer) ; sous-titres et `_retelechargement_20261115/` à garder jusqu'à la fin des comparaisons.
+**Propositions en attente de Rémi** : suppression de `Darwin-iPhone/mp3-cbr/` (96 Mo, essai CBR, nécessite l'autorisation de supprimer) ; `_retelechargement_20261115/` et `_avant_remplacement_20261115/`
+(environ 2 Go) à garder le temps de vérifier à l'oreille. Autres originaux à qualité faible (non traités) : le n° 220 (stéréo 48 kHz, dynamique 38) ; aucun autre candidat net dans l'inventaire.
 
 ### Étape 2 du plan général — émissions écoutées partagées avec le site privé : FAIT, mise en service à terminer
 Code écrit le 12 novembre, publié le 13 novembre. Détail des décisions de Rémi (stockage Vercel Blob, accès par la

@@ -6,3 +6,6 @@ Analyse des originaux (15 novembre 2026). Scripts d'enquête, pas des outils du 
              python3 cmp.py 40 41 42   -> décalage nouveau = ancien + x s par tranche de temps.
   cmp2.py -> cherche les blocs insérés et note le rythme de parole (blocs d'annonces / chroniques ?).
 Les dossiers et le jour sont écrits en dur au début des scripts (~/mnt/Darwin, _retelechargement_20261115).
+  decalages.py, verif_mono.py, raccord35.py, refaire_monologues*.py : refaire un monologue à partir d'un nouvel original (décalage mesuré par partie
+             conservée, raccord de 35), et vérifier le résultat. Ils attendent cmp.py et decalages.py dans le $HOME de la VM ; les sauvegardes sont dans
+             Darwin/_avant_remplacement_20261115/ (journal.txt explique chaque épisode).
