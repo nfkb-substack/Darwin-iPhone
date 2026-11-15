@@ -43,7 +43,7 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - `site/index.html` : toute l'application (HTML, CSS, JS, ~38 Ko).
 - `site/sw.js` : service worker. La réserve répond d'abord (la page s'ouvre sans réseau, même si la connexion
   Vercel a expiré), une copie fraîche est demandée en arrière-plan et sert à l'ouverture suivante.
-  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-8`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
+  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-9`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
   ne passent jamais par la réserve.
 - `site/catalogue.json` : 612 diffusions (n°, date, titre, première diffusion, lien Radio France, résumé de la fiche).
 - `site/api/ecoutees.js` + `_fusion.js`, `site/package.json` : service de l'historique d'écoute (voir plus bas).
@@ -79,6 +79,11 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
   Fichiers (synchroniser, exporter, clé). **Synchronisation** (`synchro`) : POST vers `api/ecoutees` après chaque
   changement (délai 1,5 s), au retour du réseau, à l'ouverture et au retour au premier plan. Sans réseau, l'état
   reste dans la page et part plus tard.
+- **Étiquettes et signalements** (`etq…`, mémoire `darwin-etiq1`) : « Thème difficile » et « Mauvaise qualité audio » (cases de la
+  fiche, pastilles et filtres du catalogue, compte dans Fichiers) ; **drapeau ⚐/⚑** en haut à droite de chaque phrase du texte
+  pour signaler une erreur de transcription. Le drapeau est un pseudo-élément CSS `#st p::after` : le DOM, le texte copié et l'ordre
+  des `<p>` (`#st` enfant i+1) ne changent pas ; un toucher dans le coin (40 px, haut droit de la phrase) signale sans déplacer
+  l'audio, ailleurs le toucher emmène l'audio comme avant. Synchronisés comme les écoutées, **sans texte** : clé `n°:indice` + instant `t`.
 - **Texte synchronisé** (`majLecteur`, `recaler`) : la phrase surlignée est celle dont le début précède `versMono(currentTime)`.
   Recalé à chaque `play` (le texte revient à la phrase lue), au retour au premier plan et à `pageshow` (iOS fige la page :
   le surlignement pouvait rester sur l'ancienne phrase). Un toucher sur une phrase déplace l'audio, sauf s'il y avait une
@@ -99,6 +104,8 @@ Dans le dossier du projet, avec Playwright :
 - `node essai_playlist.js <dossier des extraits> <playlist.m3u8>` : import, affichage, enchaînement d'une playlist.
 - `node essai_texte.js` : sélection sans déplacer l'audio, reprise après pause, retour au premier plan (40 phrases, wav factice).
 - `node essai_vitesse.js` : vitesses, groupe du début, retenue après rechargement, lecture ralentie, vérification de version, largeur 320 px (sans extraits).
+- `node essai_etiquettes.js` : cases, pastilles, filtres, drapeau (audio inchangé, texte inchangé, copie sans symbole), synchro, export/import.
+- `node essai_prive.js` : mêmes contrôles sur le site privé (voir l'en-tête du fichier pour la copie de test).
 - `node essai_ecoutees.js` : écoutées et synchronisation entre deux « appareils », avec le vrai `api/ecoutees.js` et un
   magasin Blob simulé en mémoire (aucun appel à Vercel ; Playwright suffit, pas d'extraits à fournir).
 
@@ -120,7 +127,9 @@ clé du projet, un décochage se propage) : `Darwin/site_construction/PLAN.md`, 
   (`store_wZ28tDyqq2Pu9PhZ`, relié au projet `darwin-iphone`). Ne contient que des numéros et des dates.
   Les déploiements d'aperçu écrivent dans `essai/ecoutees.json`, jamais dans l'historique réel (`ecoutees.json`).
 - Format v2 : `{"format": "darwin-ecoutees", "v": 2, "e": {"188": {"d": "2026-11-12", "m": 1794516394311}}}` ;
-  `d` = jour d'écoute ou `null` (décochée), `m` = modification. Importer accepte aussi la v1 (`{"ecoutees": {"188": "2026-11-12"}}`).
+  `d` = jour d'écoute ou `null` (décochée), `m` = modification. Depuis la version 9, sections **facultatives** de même forme :
+  `difficile` et `qualite` (clé = n°), `err` (clé = `"n°:indice de phrase"`, + `t` = instant de la phrase). `v` reste 2 : un ancien
+  client qui n'envoie que `e` ne fait rien perdre aux autres sections (`fusionPlus` dans `_fusion.js`). Importer accepte aussi la v1 (`{"ecoutees": {"188": "2026-11-12"}}`).
 - Accès : clé « Protection Bypass for Automation » du projet (Vercel › darwin-iphone › Settings › Deployment
   Protection), passée dans l'adresse de l'appel. Elle n'est écrite dans aucun fichier du dépôt.
 - **Reste à faire par Rémi** : coller la clé dans Fichiers › « Clé de synchronisation » sur l'iPhone, et via
@@ -133,14 +142,27 @@ clé du projet, un décochage se propage) : `Darwin/site_construction/PLAN.md`, 
 - import d'un lot de 5 à 10 mp3 (mémoire et durée) ;
 - usage sans réseau.
 
-### Décalage après un saut en arrière (constaté le 15 novembre, en cours)
-Cause probable : les monologues n° 1 à 16, 20 à 22, 24 à 29 et 60 sont des mp3 **VBR** (80–128 kbit/s, entête Xing) ; les 482 autres
-sont en CBR 128 kbit/s avec entête Info. Un saut (`currentTime`) dans un VBR passe par la table Xing (résolution 1 %) : erreur simulée
-sur le n° 1 de −1,4 s en moyenne, jusqu'à 6 s ; le surlignement suit `currentTime`, donc il est juste mais l'audio est ailleurs.
-Parade : réencoder ces fichiers en CBR 128 kbit/s (`ffmpeg -i f.mp3 -map 0:a -map 0:v? -c:a libmp3lame -b:a 128k -c:v copy -map_metadata 0
--id3v2_version 3 -write_xing 1 sortie.mp3` : même durée à 10 ms près, pochette et étiquettes conservées). Pilote : `Darwin/Darwin-iPhone/mp3-cbr/`
-(n° 1 à 3), à essayer sur l'iPhone avant d'étendre aux autres monologues et aux originaux VBR (une soixantaine, n° 1–29, 39–41, 44–92…).
-Originaux : 388 sans entête mais en CBR 128 (l'iPhone estime alors la durée d'après la taille, étiquette de pochette comprise : +9 à +15 s).
+### Décalage après un saut en arrière (traité le 15 novembre ; à confirmer sur l'iPhone)
+Cause : certains mp3 sont en **VBR** (80–128 kbit/s, entête Xing). Un saut (`currentTime`) dans un VBR passe par la table Xing (résolution 1 %) :
+erreur de −1,4 s en moyenne, jusqu'à 6 s ; le surlignement suit `currentTime`, donc il est juste mais l'audio est ailleurs. Les mp3 en CBR
+128 kbit/s avec entête Info sont exacts.
+Traitement : `outils/cbr.py` (détecte les VBR par les débits des trames sur deux fenêtres, réencode en CBR 128 kbit/s avec
+`-write_xing 1`, vérifie durée à 0,2 s, débit unique, entête Info, pochette ; range l'original dans `Darwin/_avant_cbr_AAAAMMJJ/` et remplace
+le fichier sous le même nom). Fait le 15 novembre : **51 fichiers** (monologues 1–16, 20–22, 24–29 ; originaux 1–16, 20–29), 0 échec,
+journal dans `_avant_cbr_20261115/journal.txt`. Les autres (CBR 128 sans entête pour 388 d'entre eux : l'iPhone estime alors la durée d'après
+la taille, étiquette de pochette comprise, +9 à +15 s) n'ont pas été touchés. **Les fichiers réencodés doivent être réimportés sur l'iPhone**
+(Fichiers › importer) pour remplacer les anciens. Dans la VM de l'espace de travail, un appel `device_bash` ne dépasse pas ~120 s et ses
+processus sont coupés à la fin : lancer `cbr.py --appliquer --max 6` plusieurs fois (idempotent).
+
+### Retélécharger les mp3 de mauvaise qualité et relire les signalements (outils du Mac, version 9)
+- `outils/retelecharger.py` : numéros pris dans l'étiquette « Mauvaise qualité audio » (`--export darwin-ecoutees.json`, ou `--service CLE`, ou à la main) ;
+  liens Radio France de `site/catalogue.json` (extracteur yt-dlp `FranceCultureIE`, motif `…/podcasts/<émission>/<titre>-<id>`) ; télécharge dans
+  un **nouveau** dossier `Darwin/_retelechargement_AAAAMMJJ/` sous le nom de l'original actuel, compare durée / débit / VBR, écrit `rapport.txt`.
+  Ne remplace rien. À lancer sur le Mac (radiofrance.fr est refusé depuis l'espace de travail de Claude : 403). Sans `--telecharger` : liste seulement.
+  Testé avec un faux yt-dlp ; **jamais exécuté contre Radio France**. Le fichier téléchargé est un original : le monologue et le texte se refont ensuite.
+- `outils/signalements.py` : lit `--export` ou `--service`, retrouve les phrases dans `sous-titres-darwin.ndjson` (local), les affiche avec la phrase
+  avant et après, écrit `signalements.txt` (ignoré par git). Le service ne contient jamais le texte.
+- Site public (index Darwin) : pas de lecteur ni de texte, donc ni étiquettes ni drapeau ; ils existent dans la webapp et le site privé.
 
 ### Entretien
 - Après chaque mise à jour de l'index : refaire `site/catalogue.json`, augmenter `VERSION`, pousser.

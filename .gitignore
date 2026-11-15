@@ -6,3 +6,6 @@ essai/
 !site/*.png
 .DS_Store
 node_modules/
+_retelechargement_*/
+signalements*.txt
+__pycache__/

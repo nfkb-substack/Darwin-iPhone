@@ -47,6 +47,14 @@ seulement). La clé du projet se colle une fois dans Fichiers › « Clé de syn
 perd : la synchronisation se fait au retour. « Exporter » produit `darwin-ecoutees.json`, qui s'importe comme les
 autres fichiers (et dans le site privé).
 
+## Étiquettes et signalements
+
+Deux étiquettes par émission, cases de la fiche, synchronisées comme les écoutées : « Thème difficile » (pastille et filtre
+« Difficiles » dans le catalogue) et « Mauvaise qualité audio » (pastille et filtre « Mauvaise qualité » ; sert à retélécharger avec
+`outils/retelecharger.py`). Dans le texte, un petit drapeau ⚐ en haut à droite de chaque phrase signale une erreur de transcription
+(⚑ une fois posé ; un second toucher le retire). Seuls le n° d'émission et l'indice de la phrase sont synchronisés, jamais le texte ;
+`outils/signalements.py` les remet en regard du texte, sur le Mac. Le site privé a les mêmes étiquettes et le même drapeau.
+
 ## Mise à jour
 
 - Catalogue : `python3 outils/catalogue.py <labo_data.json> site/catalogue.json` (après une mise à jour de l'index).
@@ -60,4 +68,5 @@ autres fichiers (et dans le site privé).
 `node essai_playlist.js <dossier des extraits> <playlist.m3u8>` : import, affichage et enchaînement d'une playlist.
 `node essai_texte.js` : synchronisation du texte (sélection, reprise après pause, retour au premier plan).
 `node essai_vitesse.js` : vitesses de lecture et groupe des premières émissions (sans extraits).
+`node essai_etiquettes.js` : étiquettes, drapeau de signalement et leur synchronisation.
 `node essai_ecoutees.js` : émissions écoutées et synchronisation entre deux appareils (magasin simulé, sans Vercel).
