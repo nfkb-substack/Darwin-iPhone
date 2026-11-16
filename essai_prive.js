@@ -31,10 +31,19 @@ function wav(sec) { const n = 8000 * sec, b = Buffer.alloc(44 + n, 128); b.write
   // 3. lecteur et texte
   await P.evaluate(i => lecOuvrir(i, {src: 'm', texte: true}), e.i); await P.waitForSelector('.lec-texte .c'); await P.waitForTimeout(600);
   dit('texte : un drapeau par phrase', await P.locator('.lec-texte .drap').count() === 40);
+  { const t1 = async () => (await P.textContent('.lec-t1')).trim(), dur = await P.evaluate(() => L.a.duration);
+    const f = t => { t = Math.max(0, Math.floor(t)); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), x = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
+    dit('temps de droite : durée totale au départ', dur > 0 && await t1() === f(dur) && /Durée totale/.test(await P.getAttribute('.lec-t1', 'aria-label')));
+    await P.click('.lec-t1'); dit('un appui : temps restant précédé de −', /^−\d+:\d\d$/.test(await t1()) && /Temps restant/.test(await P.getAttribute('.lec-t1', 'aria-label')));
+    await P.evaluate(() => { L.a.currentTime = 2; }); await P.waitForTimeout(400);
+    dit('le temps restant diminue avec la lecture', await t1() === '−' + f(dur - await P.evaluate(() => L.a.currentTime)));
+    dit('choix retenu dans le navigateur', await P.evaluate(() => localStorage.getItem('darwin-lec-restant')) === '1');
+    await P.click('.lec-t1'); dit('second appui : retour à la durée totale', await t1() === f(dur) && await P.evaluate(() => localStorage.getItem('darwin-lec-restant')) === '0'); }
+  await P.evaluate(() => L.a.pause()); await P.waitForTimeout(100);   // en pause : sinon la lecture avance pendant l'essai et fausse la comparaison
   const t0 = await P.evaluate(() => L.a.currentTime);
   await P.hover('.lec-texte .c[data-i="12"]'); await P.click('.lec-texte .drap[data-d="12"]'); await P.waitForTimeout(200);
   dit('drapeau : phrase 12 signalée (état, instant)', await P.evaluate(n => { const x = ETQ.err[n + ':12']; return x && x.d && x.t === 12 && document.querySelector('.drap[data-d="12"]').classList.contains('on'); }, num));
-  dit('drapeau : l\'audio n\'a pas bougé', Math.abs(await P.evaluate(() => L.a.currentTime) - t0) < 0.3);
+  { const t1x = await P.evaluate(() => [L.a.currentTime, L.a.paused, L.a.duration]); dit('drapeau : l\'audio n\'a pas bougé', Math.abs(t1x[0] - t0) < 0.3); }
   await P.click('.lec-texte .c[data-i="20"]'); await P.waitForTimeout(300);
   dit('clic sur la phrase : l\'audio y va', Math.abs(await P.evaluate(() => L.a.currentTime) - 20) < 1.2);
   dit('surlignement de la phrase courante toujours en place', await P.evaluate(() => !!document.querySelector('.lec-texte .c.cur')));

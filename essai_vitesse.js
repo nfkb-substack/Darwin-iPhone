@@ -26,6 +26,16 @@ const U = 'http://localhost:8767/', ok = [], dit = (nom, v) => { ok.push(!!v); c
   dit('la voix garde sa hauteur (preservesPitch)', await P.evaluate(() => document.querySelector('#audio').preservesPitch === true));
   await P.reload(); await P.waitForSelector('#vit'); await P.waitForTimeout(150);
   dit('retenue après rechargement', await rate() === 0.8 && await bouton() === '0,8×');
+  // temps total / temps restant (appui sur le temps de droite)
+  await P.waitForFunction(() => isFinite(document.querySelector('#audio').duration));
+  const dur = async () => (await P.textContent('#dur')).trim();
+  dit('temps de droite : durée totale au départ', await dur() === '0:01' && /Durée totale/.test(await P.getAttribute('#dur', 'aria-label')));
+  await P.click('#dur'); dit('un appui : temps restant précédé de −', await dur() === '−0:01' && /Temps restant/.test(await P.getAttribute('#dur', 'aria-label')));
+  await P.reload(); await P.waitForSelector('#dur'); await P.waitForFunction(() => isFinite(document.querySelector('#audio').duration)); await P.waitForTimeout(150);
+  dit('choix retenu après rechargement', await dur() === '−0:01');
+  await P.evaluate(() => { document.querySelector('#audio').currentTime = 0.5; }); await P.waitForTimeout(300);
+  dit('le temps restant suit la lecture (0:01 − 0:00 = −0:01, arrondi bas)', /^−0:0[01]$/.test(await dur()));
+  await P.click('#dur'); dit('second appui : retour à la durée totale', await dur() === '0:01');
   // groupe « émissions du début »
   await P.click('#vit'); await P.fill('#vitN', '40'); await P.dispatchEvent('#vitN', 'change');
   dit('n° 313 hors du groupe : reste à 0,8×, libellé « à partir du n° 41 »', await rate() === 0.8 && /à partir du n° 41/.test(await P.textContent('#vitQui')));
@@ -44,8 +54,8 @@ const U = 'http://localhost:8767/', ok = [], dit = (nom, v) => { ok.push(!!v); c
   dit('lecture à 0,8× : avance moins vite que le temps réel', t > 0.2 && t < 0.58);
   // page Fichiers : version et vérification de la mise à jour
   const verif = async (corps, statut, ct) => { await P.route('**/sw.js*', r => r.fulfill({status: statut, contentType: ct || 'text/javascript', body: corps})); await P.goto(U + '#fichiers'); await P.waitForSelector('#verGo'); await P.click('#verGo'); await P.waitForFunction(() => !/Vérification/.test(document.querySelector('#verEtat').textContent)); const t = await P.textContent('#verEtat'); await P.unroute('**/sw.js*'); return t; };
-  dit('Fichiers : numéro de version affiché', /Version 10\./.test(await (async () => { await P.goto(U + '#fichiers'); await P.waitForSelector('#verGo'); return P.textContent('#vue'); })()));
-  dit('mise à jour : serveur à jour', /À jour \(version 10\)/.test(await verif('const VERSION = "darwin-iphone-10";', 200)));
+  dit('Fichiers : numéro de version affiché', /Version 11\./.test(await (async () => { await P.goto(U + '#fichiers'); await P.waitForSelector('#verGo'); return P.textContent('#vue'); })()));
+  dit('mise à jour : serveur à jour', /À jour \(version 11\)/.test(await verif('const VERSION = "darwin-iphone-11";', 200)));
   dit('mise à jour : version plus récente signalée', /Version 99 (disponible|installée)/.test(await verif('const VERSION = "darwin-iphone-99";', 200)));
   dit('mise à jour : accès refusé -> connexion Vercel expirée', /code 401.*connexion Vercel/.test(await verif('Authentication Required', 401, 'text/html')));
   dit('mise à jour : page de connexion à la place de sw.js', /connexion Vercel a probablement expiré/.test(await verif('<html>Se connecter à Vercel</html>', 200, 'text/html')));

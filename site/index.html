@@ -57,6 +57,7 @@ button.lien, a.lien { background: none; border: 0; padding: 0; color: var(--acce
 .vits .btn { flex: 1 1 48px; min-width: 48px; padding: 8px 4px; font-variant-numeric: tabular-nums; }
 #vitN { width: 4.5em; padding: 8px; border: 1px solid var(--trait); border-radius: 10px; background: var(--carte); font-size: 16px; }
 #lecteur input[type=range] { width: 100%; margin: 6px 0 2px; accent-color: var(--accent); }
+#lecteur .temps button { font: inherit; color: inherit; background: none; border: 0; margin: 0; padding: 6px 0 6px 16px; cursor: pointer; font-variant-numeric: tabular-nums; }
 #lecteur .temps { display:flex; justify-content: space-between; font-size: 13px; color: var(--doux); font-variant-numeric: tabular-nums; }
 #st { margin-top: 8px; }
 #st p { margin: 0; padding: 7px 8px; border-radius: 8px; font: 17px/1.5 Georgia, serif; color: var(--doux); }
@@ -241,7 +242,7 @@ async function importer(fichiers) {
 }
 
 /* ---------- version de l'application ---------- */
-const VERSION_PAGE = 10;   // = numéro de VERSION dans sw.js
+const VERSION_PAGE = 11;   // = numéro de VERSION dans sw.js
 async function majApp() {   // dit pourquoi une mise à jour n'arrive pas (le plus souvent : connexion Vercel expirée)
   const etat = $("#verEtat"); etat.textContent = "Vérification…";
   if (navigator.onLine === false) { etat.textContent = "Pas de réseau."; return; }
@@ -441,7 +442,9 @@ function majLecteur() {
   if (!z || z.dataset.cle !== EN_COURS.cle) return;
   const curseur = $("#curseur");
   if (!curseur.dataset.tenu) { curseur.max = audio.duration || 0; curseur.value = T; }
-  $("#tps").textContent = hms(T); $("#dur").textContent = hms(audio.duration);
+  $("#tps").textContent = hms(T); const rest = mem.get("tpsRest", false) && isFinite(audio.duration), d = $("#dur");
+  d.textContent = rest ? "−" + hms(audio.duration - T) : hms(audio.duration);
+  d.setAttribute("aria-label", rest ? "Temps restant. Toucher pour afficher la durée totale." : "Durée totale. Toucher pour afficher le temps restant.");
   $("#jouer").textContent = audio.paused ? "▶︎" : "❚❚";
   const st = EN_COURS.st; if (!st) return;
   const t = versMono(T); let i = -1;
@@ -563,7 +566,7 @@ async function vueEpisode(n, kDemande) {
     ${k ? `<div id="lecteur" data-cle="${cle}">
       <div class="cmd"><button class="btn" id="m15" aria-label="Reculer de 15 secondes">−15 s</button><button class="btn plein jouer" id="jouer" aria-label="Lecture ou pause">▶︎</button><button class="btn" id="p30" aria-label="Avancer de 30 secondes">+30 s</button><button class="btn" id="vit" aria-label="Vitesse de lecture" aria-expanded="false" aria-controls="vitPan">1×</button></div>
       <div id="vitPan" hidden></div>
-      <input type="range" id="curseur" min="0" max="0" step="1" value="0" aria-label="Position dans l'émission"><div class="temps"><span id="tps">0:00</span><span id="dur">–</span></div></div>` : ""}
+      <input type="range" id="curseur" min="0" max="0" step="1" value="0" aria-label="Position dans l'émission"><div class="temps"><span id="tps">0:00</span><button type="button" id="dur" aria-label="Durée totale. Toucher pour afficher le temps restant.">–</button></div></div>` : ""}
     ${resume ? `<h3>Résumé</h3><p class="resume">${esc(resume)}</p>` : `<p class="doux">Cette émission n'a pas encore de résumé dans l'index.</p>`}
     ${meta && meta.notes ? `<details><summary>Notes du fichier (références, musiques)</summary><pre class="notes">${esc(meta.notes)}</pre></details>` : ""}
     ${e.u ? `<p><a class="lien" href="${esc(e.u)}" target="_blank" rel="noopener">Page de l'émission sur Radio France ↗</a></p>` : ""}
@@ -578,6 +581,7 @@ async function vueEpisode(n, kDemande) {
   await ouvrirSon(n, k, lancer);
   $("#jouer").onclick = () => audio.paused ? audio.play().catch(() => {}) : audio.pause();
   $("#m15").onclick = () => sauter(-15); $("#p30").onclick = () => sauter(30);
+  $("#dur").onclick = () => { mem.set("tpsRest", !mem.get("tpsRest", false)); majLecteur(); };
   // Vitesse : une pour les émissions « du début » (n° 1 à vitN, 9 par défaut, modifiable dans le panneau ; vide = aucune), une pour les autres.
   // Toucher une vitesse règle celle du groupe auquel appartient l'émission affichée. Mémoire par appareil.
   const VITESSES = [0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 1, 1.25, 1.5], vit = $("#vit"), pan = $("#vitPan"), fmt = v => String(v).replace(".", ",") + "×";

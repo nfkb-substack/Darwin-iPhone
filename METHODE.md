@@ -43,7 +43,7 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - `site/index.html` : toute l'application (HTML, CSS, JS, ~38 Ko).
 - `site/sw.js` : service worker. La réserve répond d'abord (la page s'ouvre sans réseau, même si la connexion
   Vercel a expiré), une copie fraîche est demandée en arrière-plan et sert à l'ouverture suivante.
-  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-10`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
+  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-11`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
   ne passent jamais par la réserve.
 - `site/catalogue.json` : 612 diffusions (n°, date, titre, première diffusion, lien Radio France, résumé de la fiche).
 - `site/api/ecoutees.js` + `_fusion.js`, `site/package.json` : service de l'historique d'écoute (voir plus bas).
@@ -84,6 +84,9 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
   pour signaler une erreur de transcription. Le drapeau est un pseudo-élément CSS `#st p::after` : le DOM, le texte copié et l'ordre
   des `<p>` (`#st` enfant i+1) ne changent pas ; un toucher dans le coin (40 px, haut droit de la phrase) signale sans déplacer
   l'audio, ailleurs le toucher emmène l'audio comme avant. Synchronisés comme les écoutées, **sans texte** : clé `n°:indice` + instant `t`.
+- **Temps de droite du lecteur** (`#dur`, version 11) : bouton ; un appui bascule entre la durée totale (« 1:23:45 ») et le temps restant
+  (« −12:34 », en temps du fichier, indépendant de la vitesse). Choix retenu (`mem` clé `tpsRest`). Même chose sur le site privé
+  (`.lec-t1`, `lecT1()`, clé `darwin-lec-restant`) via `outils/ajouter_restant_prive.py`.
 - **Texte synchronisé** (`majLecteur`, `recaler`) : la phrase surlignée est celle dont le début précède `versMono(currentTime)`.
   Recalé à chaque `play` (le texte revient à la phrase lue), au retour au premier plan et à `pageshow` (iOS fige la page :
   le surlignement pouvait rester sur l'ancienne phrase). Un toucher sur une phrase déplace l'audio, sauf s'il y avait une
@@ -127,7 +130,7 @@ données du site dans les réglages de Safari (les mp3 importés seraient perdus
 sauf la seconde moitié du n° 35 et, un peu faible, le n° 220.
 
 **RESTE À FAIRE — rien d'urgent, rien de bloquant**
-0. **Étiquette « préféré » — site privé du Mac, à appliquer à la prochaine connexion du Mac** (16 novembre : la webapp, version 10, est faite, testée et publiée ; le Mac n'était pas connecté). Sur le Mac : `python3 Darwin/Darwin-iPhone/outils/ajouter_prefere_prive.py Darwin/site_construction/prive_lecteur.js` (le script n'écrit rien si le texte attendu a changé ; copie en `.avant_prefere`), puis `python3 build_prive.py` dans `Darwin/site_construction` et copie du résultat dans `Darwin/site_prive.html` comme d'habitude. Testé le 16 novembre sur une copie du site privé du 15 novembre (`PRIVE_TEST=/tmp/prive_test2/ node essai_prive.js`). Le script `ajouter_prefere_prive.py` doit d'abord être copié sur le Mac (il n'est que dans le dépôt). Tant que ce n'est pas fait, le site privé ignore « préféré » mais ne le perd pas (le service le garde).
+0. ~~Étiquette « préféré » sur le site privé~~ **Fait le 16 novembre (17 h)** : `ajouter_prefere_prive.py` puis `ajouter_restant_prive.py` appliqués à `Darwin/site_construction/prive_lecteur.js` (et `.css`), `build_prive.py` relancé (sortie dans `site_construction/prive/`), résultat copié dans `Darwin/site_prive.html` (ancien : `site_prive.html.avant_prefere_restant`). Essais passés sur une copie avec le crochet `window.__T`.
 1. **Rémi, au fil de l'écoute** : réimporter dans l'app les monologues 30 à 38, 42, 43, 60 et les 51 fichiers CBR (Fichiers › importer), seulement quand il veut les écouter. Les anciens restent utilisables d'ici là
    (CBR : le saut en arrière reste approximatif tant que le fichier VBR n'est pas remplacé).
 2. **Rémi, sur l'iPhone réel** (jamais testé sous Safari iOS) : connexion Vercel depuis l'icône ; commandes et enchaînement d'une playlist écran verrouillé ; import d'un lot de 5 à 10 mp3 ; usage sans réseau ;
