@@ -14,8 +14,8 @@ async function lireDoc() {
   let j = {}; try { j = JSON.parse(await new Response(r.stream).text()); } catch (x) {}
   return {...proprePlus(j), etag: r.blob.etag || null};
 }
-// v reste 2 : les sections « difficile », « qualite » et « err » sont facultatives, les clients anciens les ignorent.
-const sortie = d => ({format: "darwin-ecoutees", v: 2, e: d.e, difficile: d.difficile, qualite: d.qualite, err: d.err});
+// v reste 2 : les sections « prefere », « difficile », « qualite » et « err » sont facultatives, les clients anciens les ignorent.
+const sortie = d => ({format: "darwin-ecoutees", v: 2, e: d.e, prefere: d.prefere, difficile: d.difficile, qualite: d.qualite, err: d.err});
 function corps(req) {
   if (req.body !== undefined) return Promise.resolve(typeof req.body === "string" ? req.body : Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body));
   return new Promise((ok, ko) => { let t = "", o = 0; req.on("data", c => { o += c.length; if (o > 4e5) { ko(new Error("trop gros")); req.destroy(); } else t += c; }); req.on("end", () => ok(t)); req.on("error", ko); });

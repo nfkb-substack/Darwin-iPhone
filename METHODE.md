@@ -43,7 +43,7 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - `site/index.html` : toute l'application (HTML, CSS, JS, ~38 Ko).
 - `site/sw.js` : service worker. La réserve répond d'abord (la page s'ouvre sans réseau, même si la connexion
   Vercel a expiré), une copie fraîche est demandée en arrière-plan et sert à l'ouverture suivante.
-  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-9`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
+  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-10`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
   ne passent jamais par la réserve.
 - `site/catalogue.json` : 612 diffusions (n°, date, titre, première diffusion, lien Radio France, résumé de la fiche).
 - `site/api/ecoutees.js` + `_fusion.js`, `site/package.json` : service de l'historique d'écoute (voir plus bas).
@@ -79,7 +79,7 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
   Fichiers (synchroniser, exporter, clé). **Synchronisation** (`synchro`) : POST vers `api/ecoutees` après chaque
   changement (délai 1,5 s), au retour du réseau, à l'ouverture et au retour au premier plan. Sans réseau, l'état
   reste dans la page et part plus tard.
-- **Étiquettes et signalements** (`etq…`, mémoire `darwin-etiq1`) : « Thème difficile » et « Mauvaise qualité audio » (cases de la
+- **Étiquettes et signalements** (`etq…`, mémoire `darwin-etiq1`) : « Préféré » (ajouté en version 10), « Thème difficile » et « Mauvaise qualité audio » (cases de la
   fiche, pastilles et filtres du catalogue, compte dans Fichiers) ; **drapeau ⚐/⚑** en haut à droite de chaque phrase du texte
   pour signaler une erreur de transcription. Le drapeau est un pseudo-élément CSS `#st p::after` : le DOM, le texte copié et l'ordre
   des `<p>` (`#st` enfant i+1) ne changent pas ; un toucher dans le coin (40 px, haut droit de la phrase) signale sans déplacer
@@ -127,6 +127,7 @@ données du site dans les réglages de Safari (les mp3 importés seraient perdus
 sauf la seconde moitié du n° 35 et, un peu faible, le n° 220.
 
 **RESTE À FAIRE — rien d'urgent, rien de bloquant**
+0. **Étiquette « préféré » — site privé du Mac, à appliquer à la prochaine connexion du Mac** (16 novembre : la webapp, version 10, est faite, testée et publiée ; le Mac n'était pas connecté). Sur le Mac : `python3 Darwin/Darwin-iPhone/outils/ajouter_prefere_prive.py Darwin/site_construction/prive_lecteur.js` (le script n'écrit rien si le texte attendu a changé ; copie en `.avant_prefere`), puis `python3 build_prive.py` dans `Darwin/site_construction` et copie du résultat dans `Darwin/site_prive.html` comme d'habitude. Testé le 16 novembre sur une copie du site privé du 15 novembre (`PRIVE_TEST=/tmp/prive_test2/ node essai_prive.js`). Le script `ajouter_prefere_prive.py` doit d'abord être copié sur le Mac (il n'est que dans le dépôt). Tant que ce n'est pas fait, le site privé ignore « préféré » mais ne le perd pas (le service le garde).
 1. **Rémi, au fil de l'écoute** : réimporter dans l'app les monologues 30 à 38, 42, 43, 60 et les 51 fichiers CBR (Fichiers › importer), seulement quand il veut les écouter. Les anciens restent utilisables d'ici là
    (CBR : le saut en arrière reste approximatif tant que le fichier VBR n'est pas remplacé).
 2. **Rémi, sur l'iPhone réel** (jamais testé sous Safari iOS) : connexion Vercel depuis l'icône ; commandes et enchaînement d'une playlist écran verrouillé ; import d'un lot de 5 à 10 mp3 ; usage sans réseau ;
@@ -169,7 +170,7 @@ clé du projet, un décochage se propage) : `Darwin/site_construction/PLAN.md`, 
   Les déploiements d'aperçu écrivent dans `essai/ecoutees.json`, jamais dans l'historique réel (`ecoutees.json`).
 - Format v2 : `{"format": "darwin-ecoutees", "v": 2, "e": {"188": {"d": "2026-11-12", "m": 1794516394311}}}` ;
   `d` = jour d'écoute ou `null` (décochée), `m` = modification. Depuis la version 9, sections **facultatives** de même forme :
-  `difficile` et `qualite` (clé = n°), `err` (clé = `"n°:indice de phrase"`, + `t` = instant de la phrase). `v` reste 2 : un ancien
+  `prefere` (version 10), `difficile` et `qualite` (clé = n°), `err` (clé = `"n°:indice de phrase"`, + `t` = instant de la phrase). `v` reste 2 : un ancien
   client qui n'envoie que `e` ne fait rien perdre aux autres sections (`fusionPlus` dans `_fusion.js`). Importer accepte aussi la v1 (`{"ecoutees": {"188": "2026-11-12"}}`).
 - Accès : clé « Protection Bypass for Automation » du projet (Vercel › darwin-iphone › Settings › Deployment
   Protection), passée dans l'adresse de l'appel. Elle n'est écrite dans aucun fichier du dépôt.

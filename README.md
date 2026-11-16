@@ -49,8 +49,8 @@ autres fichiers (et dans le site privé).
 
 ## Étiquettes et signalements
 
-Deux étiquettes par émission, cases de la fiche, synchronisées comme les écoutées : « Thème difficile » (pastille et filtre
-« Difficiles » dans le catalogue) et « Mauvaise qualité audio » (pastille et filtre « Mauvaise qualité » ; sert à retélécharger avec
+Trois étiquettes par émission, cases de la fiche, synchronisées comme les écoutées : « Préféré » (pastille et filtre « Préférés »
+dans le catalogue), « Thème difficile » (pastille et filtre « Difficiles ») et « Mauvaise qualité audio » (pastille et filtre « Mauvaise qualité » ; sert à retélécharger avec
 `outils/retelecharger.py`). Dans le texte, un petit drapeau ⚐ en haut à droite de chaque phrase signale une erreur de transcription
 (⚑ une fois posé ; un second toucher le retire). Seuls le n° d'émission et l'indice de la phrase sont synchronisés, jamais le texte ;
 `outils/signalements.py` les remet en regard du texte, sur le Mac, et `outils/corriger.py` les corrige une à une (n° d'émission et instant affichés pour écouter

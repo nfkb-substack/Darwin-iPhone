@@ -3,7 +3,7 @@
 // principal, window.__T={D,select,lecOuvrir,ECO,ECO2,ETQ,etqDate,ecoFiltre,ecoMarque,synchro,ecoLireFichier,L,setMode:v=>{ecoMode=v}};
 // (le site livré n'expose rien). Voir METHODE.md.
 const { chromium } = require('playwright'); const fs = require('fs'), path = require('path');
-const R = '/tmp/prive_test/', ok = [], dit = (n, v) => { ok.push(!!v); console.log(v ? 'OK ' : 'ÉCHEC', n); };
+const R = process.env.PRIVE_TEST || '/tmp/prive_test/', ok = [], dit = (n, v) => { ok.push(!!v); console.log(v ? 'OK ' : 'ÉCHEC', n); };
 function wav(sec) { const n = 8000 * sec, b = Buffer.alloc(44 + n, 128); b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(8000, 24); b.writeUInt32LE(8000, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write('data', 36); b.writeUInt32LE(n, 40); return b; }
 (async () => {
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required', '--allow-file-access-from-files'] }), errs = [];
@@ -20,14 +20,14 @@ function wav(sec) { const n = 8000 * sec, b = Buffer.alloc(44 + n, 128); b.write
   fs.writeFileSync(R + 'monologue/' + e.nom, wav(40));
   // 1. fiche
   await P.evaluate(i => select('ep', i), e.i); await P.waitForSelector('.eco-etiq input');
-  dit('fiche : deux cases « Thème difficile » / « Mauvaise qualité audio »', await P.locator('.eco-etiq input').count() === 2);
-  await P.check('.eco-etiq input[data-etq="difficile"]'); await P.check('.eco-etiq input[data-etq="qualite"]');
-  dit('cases enregistrées (difficile, qualité) et clé darwin-etiq1', await P.evaluate(n => etqDate('difficile', String(n)) && etqDate('qualite', String(n)) && !!JSON.parse(localStorage.getItem('darwin-etiq1')).difficile[n], e.n));
+  dit('fiche : trois cases « Préféré » / « Thème difficile » / « Mauvaise qualité audio »', await P.locator('.eco-etiq input').count() === 3);
+  await P.check('.eco-etiq input[data-etq="prefere"]'); await P.check('.eco-etiq input[data-etq="difficile"]'); await P.check('.eco-etiq input[data-etq="qualite"]');
+  dit('cases enregistrées (préféré, difficile, qualité) et clé darwin-etiq1', await P.evaluate(n => etqDate('prefere', String(n)) && etqDate('difficile', String(n)) && etqDate('qualite', String(n)) && !!JSON.parse(localStorage.getItem('darwin-etiq1')).difficile[n], e.n));
   dit('« Écoutée en entier » toujours indépendante', await P.evaluate(n => !ECO[n], e.n));
   // 2. filtre
-  { const h = fs.readFileSync(R + 'site_prive.html', 'utf8'); dit('filtre du catalogue : options « difficiles » et « mauvaise qualité » dans la barre', h.includes('<option value="dif">difficiles</option><option value="qua">mauvaise qualité</option>')); }
-  dit('ecoFiltre : mode difficiles ne garde que l\'émission étiquetée', await P.evaluate(() => { __T.setMode('dif'); const k = D.eps.filter(ecoFiltre).length; __T.setMode('qua'); const q = D.eps.filter(ecoFiltre).length; __T.setMode(''); return k === 1 && q === 1; }));
-  dit('marque dans le catalogue', await P.evaluate(n => /◆/.test(ecoMarque({n})) && /⚠/.test(ecoMarque({n})), e.n));
+  { const h = fs.readFileSync(R + 'site_prive.html', 'utf8'); dit('filtre du catalogue : options « préférés », « difficiles » et « mauvaise qualité » dans la barre', h.includes('<option value="pre">préférés</option><option value="dif">difficiles</option><option value="qua">mauvaise qualité</option>')); }
+  dit('ecoFiltre : modes préférés, difficiles et qualité ne gardent que l\'émission étiquetée', await P.evaluate(() => { __T.setMode('pre'); const p = D.eps.filter(ecoFiltre).length; __T.setMode('dif'); const k = D.eps.filter(ecoFiltre).length; __T.setMode('qua'); const q = D.eps.filter(ecoFiltre).length; __T.setMode(''); return p === 1 && k === 1 && q === 1; }));
+  dit('marque dans le catalogue', await P.evaluate(n => /★/.test(ecoMarque({n})) && /◆/.test(ecoMarque({n})) && /⚠/.test(ecoMarque({n})), e.n));
   // 3. lecteur et texte
   await P.evaluate(i => lecOuvrir(i, {src: 'm', texte: true}), e.i); await P.waitForSelector('.lec-texte .c'); await P.waitForTimeout(600);
   dit('texte : un drapeau par phrase', await P.locator('.lec-texte .drap').count() === 40);
@@ -45,18 +45,18 @@ function wav(sec) { const n = 8000 * sec, b = Buffer.alloc(44 + n, 128); b.write
   await P.click('.lec-texte .drap[data-d="31"]');
   // 4. synchro (réponse simulée d'un autre appareil)
   let envoye = null;
-  await P.route('https://darwin-iphone.vercel.app/**', r => { envoye = JSON.parse(r.request().postData()); r.fulfill({status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify({format: 'darwin-ecoutees', v: 2, e: envoye.e, difficile: Object.assign({}, envoye.difficile, {'245': {d: '2026-11-15', m: Date.now()}}), qualite: envoye.qualite, err: Object.assign({}, envoye.err, {[num + ':3']: {d: '2026-11-15', m: Date.now(), t: 3}})})}); });
+  await P.route('https://darwin-iphone.vercel.app/**', r => { envoye = JSON.parse(r.request().postData()); r.fulfill({status: 200, contentType: 'application/json', headers: {'access-control-allow-origin': '*'}, body: JSON.stringify({format: 'darwin-ecoutees', v: 2, e: envoye.e, prefere: Object.assign({}, envoye.prefere, {'188': {d: '2026-11-15', m: Date.now()}}), difficile: Object.assign({}, envoye.difficile, {'245': {d: '2026-11-15', m: Date.now()}}), qualite: envoye.qualite, err: Object.assign({}, envoye.err, {[num + ':3']: {d: '2026-11-15', m: Date.now(), t: 3}})})}); });
   await P.evaluate(() => { localStorage.setItem('darwin-synchro-cle', JSON.stringify('cle-essai')); synchro(); }); await P.waitForTimeout(800);
-  dit('synchro : envoi des sections (v2)', envoye && envoye.v === 2 && envoye.difficile[e.n] && envoye.qualite[e.n] && envoye.err[num + ':31'] && envoye.err[num + ':31'].t === 31);
-  dit('synchro : étiquette et signalement de l\'autre appareil fusionnés, drapeau 3 affiché', await P.evaluate(n => etqDate('difficile', '245') && etqDate('err', n + ':3') && document.querySelector('.drap[data-d="3"]').classList.contains('on'), num));
+  dit('synchro : envoi des sections (v2)', envoye && envoye.v === 2 && envoye.prefere[e.n] && envoye.difficile[e.n] && envoye.qualite[e.n] && envoye.err[num + ':31'] && envoye.err[num + ':31'].t === 31);
+  dit('synchro : étiquette et signalement de l\'autre appareil fusionnés, drapeau 3 affiché', await P.evaluate(n => etqDate('prefere', '188') && etqDate('difficile', '245') && etqDate('err', n + ':3') && document.querySelector('.drap[data-d="3"]').classList.contains('on'), num));
   // 5. export / import
   const doc = await P.evaluate(() => JSON.stringify({format: 'darwin-ecoutees', v: 2, e: ECO2, ...ETQ}));
   await P.evaluate(() => { for (const k of Object.keys(ETQ)) ETQ[k] = {}; });
   await P.evaluate(d => ecoLireFichier(d), doc);
-  dit('import : sections restaurées', await P.evaluate(n => etqDate('difficile', String(n)) && etqDate('err', n + ':31'), num));
+  dit('import : sections restaurées', await P.evaluate(n => etqDate('prefere', String(n)) && etqDate('difficile', String(n)) && etqDate('err', n + ':31'), num));
   // 6. ancien document (sans sections) accepté, rien d'effacé
   await P.evaluate(() => ecoLireFichier(JSON.stringify({format: 'darwin-ecoutees', v: 2, e: {}})));
-  dit('ancien format : aucune étiquette perdue', await P.evaluate(n => etqDate('difficile', String(n)) && etqDate('err', n + ':31'), num));
+  dit('ancien format : aucune étiquette perdue', await P.evaluate(n => etqDate('prefere', String(n)) && etqDate('difficile', String(n)) && etqDate('err', n + ':31'), num));
   console.log(errs.length ? errs : 'aucune erreur de page'); await b.close();
   if (ok.includes(false) || errs.length) process.exit(1);
 })().catch(e => { console.error(e); process.exit(1); });

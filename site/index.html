@@ -241,7 +241,7 @@ async function importer(fichiers) {
 }
 
 /* ---------- version de l'application ---------- */
-const VERSION_PAGE = 9;   // = numéro de VERSION dans sw.js
+const VERSION_PAGE = 10;   // = numéro de VERSION dans sw.js
 async function majApp() {   // dit pourquoi une mise à jour n'arrive pas (le plus souvent : connexion Vercel expirée)
   const etat = $("#verEtat"); etat.textContent = "Vérification…";
   if (navigator.onLine === false) { etat.textContent = "Pas de réseau."; return; }
@@ -303,13 +303,14 @@ async function ecoExporter() {
   try { if (navigator.canShare && navigator.canShare({files: [f]})) { await navigator.share({files: [f]}); return; } } catch (e) { if (e && e.name === "AbortError") return; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
-/* ---------- étiquettes (difficile, mauvaise qualité) et phrases signalées ---------- */
+/* ---------- étiquettes (préféré, difficile, mauvaise qualité) et phrases signalées ---------- */
 // Même principe que les émissions écoutées, mêmes règles de fusion (api/_fusion.js), synchronisées dans le même document.
+//   prefere   : émission préférée                 (clé = n° d'émission)
 //   difficile : thème difficile pour moi          (clé = n° d'émission)
 //   qualite   : mauvaise qualité audio            (clé = n° d'émission ; à retélécharger)
 //   err       : phrase du transcript à corriger   (clé = "n°:indice de la phrase", t = instant de la phrase dans le monologue)
 // Le texte du transcript n'est jamais envoyé : seuls partent le n° et l'indice.
-const ETQ_RE = {difficile: /^\d{1,5}$/, qualite: /^\d{1,5}$/, err: /^\d{1,5}:\d{1,5}$/};
+const ETQ_RE = {prefere: /^\d{1,5}$/, difficile: /^\d{1,5}$/, qualite: /^\d{1,5}$/, err: /^\d{1,5}:\d{1,5}$/};
 function etqPropre(sec, E) {
   const o = {}; let k = 0;
   if (E && typeof E === "object" && !Array.isArray(E)) for (const [c, x] of Object.entries(E)) {
@@ -336,13 +337,14 @@ function etqMeler(j) {   // fusionne les sections d'un document reçu (service o
   }
   etqSauver(); return k;
 }
-const etqPhrase = () => { const d = etqNb("difficile"), q = etqNb("qualite"), e = etqNb("err"); return `${d} difficile${d > 1 ? "s" : ""}, ${q} à mauvaise qualité audio, ${e} phrase${e > 1 ? "s" : ""} signalée${e > 1 ? "s" : ""}.`; };
+const etqPhrase = () => { const p = etqNb("prefere"), d = etqNb("difficile"), q = etqNb("qualite"), e = etqNb("err"); return `${p} préféré${p > 1 ? "s" : ""}, ${d} difficile${d > 1 ? "s" : ""}, ${q} à mauvaise qualité audio, ${e} phrase${e > 1 ? "s" : ""} signalée${e > 1 ? "s" : ""}.`; };
 let dessinerListe = null;
 function ecoRafraichir() {   // après un changement (case, fin de lecture, synchronisation, import) : met à jour ce qui est affiché
   const m = /^#e(\d+)/.exec(location.hash), c = $("#eco");
   if (vueCourante === "ep" && m && c) { const d = ecoutee(+m[1]); c.checked = !!d; $("#ecoDate").textContent = d ? "(le " + dateFr(d) + ")" : ""; }
   else if (vueCourante === "liste" && dessinerListe && $("#liste")) dessinerListe();
   if (vueCourante === "ep" && m) {
+    if ($("#etqPre")) $("#etqPre").checked = !!etqDate("prefere", m[1]);
     if ($("#etqDif")) $("#etqDif").checked = !!etqDate("difficile", m[1]);
     if ($("#etqQua")) $("#etqQua").checked = !!etqDate("qualite", m[1]);
     document.querySelectorAll("#st p[data-i]").forEach(p => p.classList.toggle("err", !!etqDate("err", m[1] + ":" + p.dataset.i)));
@@ -512,20 +514,21 @@ function vueListe() {
   $("#titre").textContent = "Sur les épaules de Darwin"; $("#retour").hidden = true; $("#versGestion").hidden = false;
   const seul = mem.get("seul", false) && META.size > 0, neuf = mem.get("neuf", false), q = mem.get("q", "");
   $("#vue").innerHTML = `<input type="search" id="q" placeholder="Titre, numéro ou année" value="${esc(q)}" autocomplete="off" autocorrect="off">
-    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button><button class="btn" id="fListes">Playlists (${LISTES.size})</button><button class="btn" id="fNeuf" aria-pressed="${neuf}">Pas encore écoutées</button>${etqNb("difficile") ? `<button class="btn" id="fDif" aria-pressed="${mem.get("fdif", false)}">Difficiles (${etqNb("difficile")})</button>` : ""}${etqNb("qualite") ? `<button class="btn" id="fQua" aria-pressed="${mem.get("fqua", false)}">Mauvaise qualité (${etqNb("qualite")})</button>` : ""}</div>
+    <div class="filtres"><button class="btn" id="fTous" aria-pressed="${!seul}">Tout le catalogue</button><button class="btn" id="fSeul" aria-pressed="${seul}">Sur l'iPhone (${new Set([...META.values()].map(m => m.n)).size})</button><button class="btn" id="fListes">Playlists (${LISTES.size})</button><button class="btn" id="fNeuf" aria-pressed="${neuf}">Pas encore écoutées</button>${etqNb("prefere") ? `<button class="btn" id="fPre" aria-pressed="${mem.get("fpre", false)}">Préférés (${etqNb("prefere")})</button>` : ""}${etqNb("difficile") ? `<button class="btn" id="fDif" aria-pressed="${mem.get("fdif", false)}">Difficiles (${etqNb("difficile")})</button>` : ""}${etqNb("qualite") ? `<button class="btn" id="fQua" aria-pressed="${mem.get("fqua", false)}">Mauvaise qualité (${etqNb("qualite")})</button>` : ""}</div>
     ${META.size ? "" : `<div class="info">Aucun fichier audio sur cet iPhone pour l'instant. <button class="lien" id="aller">Importer des émissions</button></div>`}
     <p class="doux" id="compte"></p><ul class="liste" id="liste"></ul>`;
   const dessiner = () => {
     const mots = sansAccent($("#q").value.trim()).split(/\s+/).filter(Boolean), seulement = mem.get("seul", false) && META.size > 0, neuves = mem.get("neuf", false);
-    const l = CAT.filter(e => (!seulement || a(e.n, "m") || a(e.n, "o")) && (!neuves || !ecoutee(e.n)) && (!mem.get("fdif", false) || etqDate("difficile", e.n)) && (!mem.get("fqua", false) || etqDate("qualite", e.n)) && mots.every(m => (e._c || (e._c = sansAccent(`${e.t} n${e.n} ${e.n} ${e.d.slice(0, 4)}`))).includes(m)));
+    const l = CAT.filter(e => (!seulement || a(e.n, "m") || a(e.n, "o")) && (!neuves || !ecoutee(e.n)) && (!mem.get("fpre", false) || !etqNb("prefere") || etqDate("prefere", e.n)) && (!mem.get("fdif", false) || !etqNb("difficile") || etqDate("difficile", e.n)) && (!mem.get("fqua", false) || !etqNb("qualite") || etqDate("qualite", e.n)) && mots.every(m => (e._c || (e._c = sansAccent(`${e.t} n${e.n} ${e.n} ${e.d.slice(0, 4)}`))).includes(m)));
     $("#compte").textContent = l.length + (l.length > 1 ? " diffusions" : " diffusion");
-    $("#liste").innerHTML = l.map(e => `<li><a href="#e${e.n}"><div class="t">${ecoutee(e.n) ? '<span class="ok" title="Écoutée en entier">✓ </span>' : ""}${esc(e.t)}</div><div class="s">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? " · rediffusion du n° " + e.p : ""}${a(e.n, "m") ? '<span class="pastille">M</span>' : ""}${a(e.n, "o") ? '<span class="pastille">O</span>' : ""}${etqDate("difficile", e.n) ? '<span class="pastille">difficile</span>' : ""}${etqDate("qualite", e.n) ? '<span class="pastille">qualité</span>' : ""}</div></a></li>`).join("") || `<li class="doux" style="padding:12px 0">Aucune émission ne correspond.</li>`;
+    $("#liste").innerHTML = l.map(e => `<li><a href="#e${e.n}"><div class="t">${ecoutee(e.n) ? '<span class="ok" title="Écoutée en entier">✓ </span>' : ""}${esc(e.t)}</div><div class="s">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? " · rediffusion du n° " + e.p : ""}${a(e.n, "m") ? '<span class="pastille">M</span>' : ""}${a(e.n, "o") ? '<span class="pastille">O</span>' : ""}${etqDate("prefere", e.n) ? '<span class="pastille">préféré</span>' : ""}${etqDate("difficile", e.n) ? '<span class="pastille">difficile</span>' : ""}${etqDate("qualite", e.n) ? '<span class="pastille">qualité</span>' : ""}</div></a></li>`).join("") || `<li class="doux" style="padding:12px 0">Aucune émission ne correspond.</li>`;
   };
   $("#q").oninput = () => { mem.set("q", $("#q").value); dessiner(); };
   $("#fTous").onclick = () => { mem.set("seul", false); vueListe(); };
   $("#fSeul").onclick = () => { mem.set("seul", true); vueListe(); };
   $("#fListes").onclick = () => { location.hash = "#listes"; };
   $("#fNeuf").onclick = () => { mem.set("neuf", !mem.get("neuf", false)); vueListe(); };
+  if ($("#fPre")) $("#fPre").onclick = () => { mem.set("fpre", !mem.get("fpre", false)); vueListe(); };
   if ($("#fDif")) $("#fDif").onclick = () => { mem.set("fdif", !mem.get("fdif", false)); vueListe(); };
   if ($("#fQua")) $("#fQua").onclick = () => { mem.set("fqua", !mem.get("fqua", false)); vueListe(); };
   if ($("#aller")) $("#aller").onclick = () => { location.hash = "#fichiers"; };
@@ -553,7 +556,7 @@ async function vueEpisode(n, kDemande) {
   const urlP = poch ? URL.createObjectURL(poch) : "";
   $("#vue").innerHTML = `<div class="entete">${urlP ? `<img src="${urlP}" alt="">` : ""}<div><div class="doux">n° ${e.n} · ${dateFr(e.d)}${e.p != null ? ` · rediffusion du <a class="lien" href="#e${e.p}">n° ${e.p}</a>` : ""}</div><h2>${esc(e.t)}</h2></div></div>
     <label class="eco"><input type="checkbox" id="eco" ${ecoutee(n) ? "checked" : ""}> Écoutée en entier <span class="doux" id="ecoDate">${ecoutee(n) ? "(le " + dateFr(ecoutee(n)) + ")" : ""}</span></label>
-    <div class="etiqs"><label class="eco"><input type="checkbox" id="etqDif" ${etqDate("difficile", n) ? "checked" : ""}> Thème difficile</label><label class="eco"><input type="checkbox" id="etqQua" ${etqDate("qualite", n) ? "checked" : ""}> Mauvaise qualité audio</label></div>
+    <div class="etiqs"><label class="eco"><input type="checkbox" id="etqPre" ${etqDate("prefere", n) ? "checked" : ""}> Préféré</label><label class="eco"><input type="checkbox" id="etqDif" ${etqDate("difficile", n) ? "checked" : ""}> Thème difficile</label><label class="eco"><input type="checkbox" id="etqQua" ${etqDate("qualite", n) ? "checked" : ""}> Mauvaise qualité audio</label></div>
     ${ctx ? `<div class="info" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><a class="lien" href="#l${encodeURIComponent(ctx.id)}">${esc(ctx.pl.titre)}</a><div class="doux">${ctx.i + 1} / ${ctx.pl.items.length}</div></div><button class="btn" id="plPrec" aria-label="Émission précédente de la playlist" ${voisinListe(ctx, -1) < 0 ? "disabled" : ""}>‹</button><button class="btn" id="plSuiv" aria-label="Émission suivante de la playlist" ${voisinListe(ctx, 1) < 0 ? "disabled" : ""}>›</button></div>` : ""}
     <div class="versions">${["m", "o"].map(x => `<button class="btn ${a(n, x) ? "" : "absent"}" data-k="${x}" aria-pressed="${k === x}">${NOM[x]}${a(n, x) ? "" : " (absent)"}</button>`).join("")}</div>
     ${alerte}
@@ -566,6 +569,7 @@ async function vueEpisode(n, kDemande) {
     ${e.u ? `<p><a class="lien" href="${esc(e.u)}" target="_blank" rel="noopener">Page de l'émission sur Radio France ↗</a></p>` : ""}
     ${k ? `<h3>Texte de l'émission</h3>${st ? `<div id="st"><p class="musique doux" id="musique" hidden>♪ musique</p>${st.s.map(([, t], i) => `<p data-i="${i}"${etqDate("err", n + ":" + i) ? ' class="err"' : ""}>${esc(t)}</p>`).join("")}</div>` : `<p class="doux">Les sous-titres de cette émission ne sont pas sur l'iPhone. Ils s'importent en une fois depuis la page <a class="lien" href="#fichiers">Fichiers</a>.</p>`}` : ""}`;
   $("#eco").onchange = ev => ecoPoser(n, ev.target.checked);
+  $("#etqPre").onchange = ev => etqPoser("prefere", String(n), ev.target.checked);
   $("#etqDif").onchange = ev => etqPoser("difficile", String(n), ev.target.checked);
   $("#etqQua").onchange = ev => etqPoser("qualite", String(n), ev.target.checked);
   document.querySelectorAll(".versions .btn").forEach(b => b.onclick = () => { location.hash = "#e" + n + b.dataset.k; });

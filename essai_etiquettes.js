@@ -1,4 +1,4 @@
-// Essai des étiquettes (difficile, mauvaise qualité), du drapeau de signalement dans le transcript et de leur synchronisation.
+// Essai des étiquettes (préféré, difficile, mauvaise qualité), du drapeau de signalement dans le transcript et de leur synchronisation.
 // node essai_etiquettes.js   (Playwright, aucun réseau ; wav de 40 s fabriqué sur place, 40 phrases d'une seconde)
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -22,9 +22,9 @@ const U = 'http://localhost:8769/', ok = [], dit = (nom, v) => { ok.push(!!v); c
   const coin = async i => { await P.evaluate(i => document.querySelector('#st p[data-i="' + i + '"]').scrollIntoView({block: 'center'}), i); return P.evaluate(i => { const r = document.querySelector('#st p[data-i="' + i + '"]').getBoundingClientRect(); return {x: r.right - 16, y: r.top + 16}; }, i); };
   const textes0 = await P.evaluate(() => [...document.querySelectorAll('#st p[data-i]')].map(p => p.textContent));
   // 1. cases de la fiche
-  await P.check('#etqDif'); await P.check('#etqQua');
-  dit('fiche : « difficile » et « mauvaise qualité » enregistrées', await P.evaluate(() => etqDate('difficile', '313') && etqDate('qualite', '313') && !etqDate('err', '313:1')));
-  dit('mémoire locale : darwin-etiq1 écrit', await P.evaluate(() => { const o = JSON.parse(localStorage.getItem('darwin-etiq1')); return !!(o && o.difficile['313'] && o.qualite['313']); }));
+  await P.check('#etqPre'); await P.check('#etqDif'); await P.check('#etqQua');
+  dit('fiche : « préféré », « difficile » et « mauvaise qualité » enregistrées', await P.evaluate(() => etqDate('prefere', '313') && etqDate('difficile', '313') && etqDate('qualite', '313') && !etqDate('err', '313:1')));
+  dit('mémoire locale : darwin-etiq1 écrit', await P.evaluate(() => { const o = JSON.parse(localStorage.getItem('darwin-etiq1')); return !!(o && o.prefere['313'] && o.difficile['313'] && o.qualite['313']); }));
   // 2. drapeau : un toucher dans le coin signale sans bouger l'audio
   await P.evaluate(() => { const a = document.querySelector('#audio'); a.currentTime = 5; a.pause(); });
   await P.waitForTimeout(200); const t0 = await T();
@@ -54,31 +54,36 @@ const U = 'http://localhost:8769/', ok = [], dit = (nom, v) => { ok.push(!!v); c
   await P.evaluate(() => { location.hash = ''; });
   await P.waitForTimeout(300);
   const liste = await P.evaluate(() => { const li = [...document.querySelectorAll('#liste li')].find(x => /n° 313\b/.test(x.textContent)); return li ? li.textContent : ''; });
-  dit('catalogue : pastilles « difficile » et « qualité » sur le n° 313', /difficile/.test(liste) && /qualité/.test(liste));
-  dit('catalogue : boutons de filtre présents', await P.evaluate(() => !!document.querySelector('#fDif') && !!document.querySelector('#fQua')));
+  dit('catalogue : pastilles « préféré », « difficile » et « qualité » sur le n° 313', /préféré/.test(liste) && /difficile/.test(liste) && /qualité/.test(liste));
+  dit('catalogue : boutons de filtre présents', await P.evaluate(() => !!document.querySelector('#fPre') && !!document.querySelector('#fDif') && !!document.querySelector('#fQua')));
+  await P.click('#fPre'); await P.waitForTimeout(200);
+  dit('filtre « Préférés » : seule l\'émission étiquetée reste', await P.evaluate(() => document.querySelectorAll('#liste li a').length === 1));
+  await P.evaluate(() => { etqPoser('prefere', '313', false); vueListe(); }); await P.waitForTimeout(200);   // le filtre « fpre » reste actif en mémoire
+  dit('filtre « Préférés » actif sans aucun préféré : la liste n\'est pas vide et le bouton disparaît', await P.evaluate(() => document.querySelectorAll('#liste li a').length > 1 && !document.querySelector('#fPre')));
+  await P.evaluate(() => { etqPoser('prefere', '313', true); mem.set('fpre', false); vueListe(); }); await P.waitForTimeout(200);
   await P.click('#fDif'); await P.waitForTimeout(200);
   dit('filtre « Difficiles » : seule l\'émission étiquetée reste', await P.evaluate(() => document.querySelectorAll('#liste li a').length === 1));
   await P.click('#fDif'); await P.waitForTimeout(200);
   // 8. synchronisation : envoi des sections, fusion de la réponse d'un autre appareil, ancien format toléré
   let envoye = null, reponse = null;
   await P.route('**/api/ecoutees**', r => { if (r.request().method() === 'POST') envoye = JSON.parse(r.request().postData()); r.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(reponse(envoye))}); });
-  reponse = e => ({format: 'darwin-ecoutees', v: 2, e: e.e, difficile: Object.assign({}, e.difficile, {'245': {d: '2026-11-15', m: Date.now()}}), qualite: e.qualite, err: Object.assign({}, e.err, {'313:3': {d: '2026-11-15', m: Date.now(), t: 3}})});
+  reponse = e => ({format: 'darwin-ecoutees', v: 2, e: e.e, prefere: Object.assign({}, e.prefere, {'188': {d: '2026-11-15', m: Date.now()}}), difficile: Object.assign({}, e.difficile, {'245': {d: '2026-11-15', m: Date.now()}}), qualite: e.qualite, err: Object.assign({}, e.err, {'313:3': {d: '2026-11-15', m: Date.now(), t: 3}})});
   await P.evaluate(() => synchro()); await P.waitForTimeout(700);
-  dit('synchro : envoi de e, difficile, qualite, err (v2)', envoye && envoye.v === 2 && envoye.e && envoye.difficile['313'] && envoye.qualite['313'] && envoye.err['313:30'] && envoye.err['313:30'].t === 30);
-  dit('synchro : étiquette et signalement venus d\'un autre appareil fusionnés', await P.evaluate(() => etqDate('difficile', '245') && etqDate('err', '313:3')));
+  dit('synchro : envoi de e, prefere, difficile, qualite, err (v2)', envoye && envoye.v === 2 && envoye.e && envoye.prefere['313'] && envoye.difficile['313'] && envoye.qualite['313'] && envoye.err['313:30'] && envoye.err['313:30'].t === 30);
+  dit('synchro : étiquette et signalement venus d\'un autre appareil fusionnés', await P.evaluate(() => etqDate('prefere', '188') && etqDate('difficile', '245') && etqDate('err', '313:3')));
   reponse = e => ({format: 'darwin-ecoutees', v: 2, e: {}});   // ancien service : aucune section ne doit être perdue
   await P.evaluate(() => synchro()); await P.waitForTimeout(700);
-  dit('synchro avec une réponse sans sections : rien n\'est effacé', await P.evaluate(() => etqDate('difficile', '313') && etqDate('qualite', '313') && etqDate('err', '313:30')));
+  dit('synchro avec une réponse sans sections : rien n\'est effacé', await P.evaluate(() => etqDate('prefere', '313') && etqDate('difficile', '313') && etqDate('qualite', '313') && etqDate('err', '313:30')));
   // 9. fichier d'export / import
   const doc = await P.evaluate(() => JSON.stringify({format: 'darwin-ecoutees', v: 2, e: ECO, ...ETQ}));
-  dit('export : le document contient les trois sections', (() => { const j = JSON.parse(doc); return j.difficile && j.qualite && j.err; })());
-  await P.evaluate(() => { ETQ.difficile = {}; ETQ.qualite = {}; ETQ.err = {}; etqSauver(); });
+  dit('export : le document contient les quatre sections', (() => { const j = JSON.parse(doc); return j.prefere && j.difficile && j.qualite && j.err; })());
+  await P.evaluate(() => { ETQ.prefere = {}; ETQ.difficile = {}; ETQ.qualite = {}; ETQ.err = {}; etqSauver(); });
   await P.evaluate(d => ecoLireFichier(d), doc);
-  dit('import : étiquettes et signalements restaurés', await P.evaluate(() => etqDate('difficile', '313') && etqDate('qualite', '313') && etqDate('err', '313:30')));
+  dit('import : étiquettes et signalements restaurés', await P.evaluate(() => etqDate('prefere', '313') && etqDate('difficile', '313') && etqDate('qualite', '313') && etqDate('err', '313:30')));
   await P.unroute('**/api/ecoutees**');
   // 10. Fichiers : compte
   await P.goto(U + '#fichiers'); await P.waitForSelector('#etqNb');
-  dit('Fichiers : compte des étiquettes affiché', /difficile.*mauvaise qualité.*signalée/.test(await P.textContent('#etqNb')));
+  dit('Fichiers : compte des étiquettes affiché', /préféré.*difficile.*mauvaise qualité.*signalée/.test(await P.textContent('#etqNb')));
   console.log(errs.length ? errs : 'aucune erreur de page'); await b.close(); srv.close();
   if (ok.includes(false) || errs.length) process.exit(1);
 })().catch(e => { console.error(e); process.exit(1); });

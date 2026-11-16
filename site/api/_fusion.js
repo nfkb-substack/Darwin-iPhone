@@ -1,12 +1,13 @@
 // Historique et étiquettes : règles communes au service, à la webapp et au site privé (qui en portent une copie).
 // Chaque section est un état {clé: {d, m}} ; d = jour de la pose "AAAA-MM-JJ", ou null si retiré ; m = date de modification (ms).
 //   e        : émissions écoutées en entier      (clé = numéro d'émission)
+//   prefere  : émissions préférées               (clé = numéro)
 //   difficile: émissions aux thèmes difficiles   (clé = numéro)
 //   qualite  : émissions à mauvaise qualité audio (clé = numéro)
 //   err      : phrases du transcript signalées   (clé = "numéro:indice de la phrase", + t = instant de la phrase en s)
 // Fusion, clé par clé : deux poses -> jour le plus ancien ; sinon la modification la plus récente l'emporte.
 // Un client ancien qui n'envoie que « e » ne fait rien perdre aux autres sections.
-const SECTIONS = {e: /^\d{1,5}$/, difficile: /^\d{1,5}$/, qualite: /^\d{1,5}$/, err: /^\d{1,5}:\d{1,5}$/};
+const SECTIONS = {e: /^\d{1,5}$/, prefere: /^\d{1,5}$/, difficile: /^\d{1,5}$/, qualite: /^\d{1,5}$/, err: /^\d{1,5}:\d{1,5}$/};
 const fusion1 = (a, b) => !a ? b : !b ? a : a.d && b.d ? {...(b.m > a.m ? b : a), d: a.d < b.d ? a.d : b.d, m: Math.max(a.m, b.m)} : b.m > a.m || (b.m === a.m && b.d) ? b : a;
 function propre(E, maintenant, re = SECTIONS.e) {
   const o = {}; let k = 0;
@@ -22,7 +23,7 @@ function propre(E, maintenant, re = SECTIONS.e) {
 }
 function fusion(A, B) { const o = {}; for (const n of new Set([...Object.keys(A), ...Object.keys(B)])) o[n] = fusion1(A[n], B[n]); return o; }
 const egal = (A, B) => { const a = Object.keys(A), b = Object.keys(B); return a.length === b.length && a.every(n => B[n] && A[n].d === B[n].d && A[n].m === B[n].m && A[n].t === B[n].t); };
-// Document complet : {e, difficile, qualite, err}, chaque section nettoyée (toujours présente, éventuellement vide).
+// Document complet : {e, prefere, difficile, qualite, err}, chaque section nettoyée (toujours présente, éventuellement vide).
 const proprePlus = (j, maintenant) => Object.fromEntries(Object.entries(SECTIONS).map(([s, re]) => [s, propre(j && j[s], maintenant, re)]));
 const fusionPlus = (A, B) => Object.fromEntries(Object.keys(SECTIONS).map(s => [s, fusion(A[s], B[s])]));
 const egalPlus = (A, B) => Object.keys(SECTIONS).every(s => egal(A[s], B[s]));
