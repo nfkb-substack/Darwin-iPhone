@@ -51,8 +51,10 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - `outils/catalogue.py <labo_data.json> site/catalogue.json` : refait le catalogue à partir des données de l'index
   (`labo_data.json` est produit par `Darwin/site_construction/prep_labo.py`).
 - `outils/sous_titres.py [n…]` (sur le Mac) : lit `Darwin/lecteur/*.js` → `sous-titres-darwin.ndjson`.
-- `essai.js`, `essai_playlist.js`, `essai_ecoutees.js` : essais Playwright (voir plus bas). Extraits d'essai sur le Mac dans `essai/`
-  (313 monologue et original, 470 monologue, `sous-titres-essai.ndjson`).
+- `essai.js`, `essai_playlist.js`, `essai_ecoutees.js` : essais Playwright (voir plus bas). Les cinq autres essais fabriquent leurs
+  fichiers audio eux-mêmes ; seul `essai.js` lisait des extraits réels (313 monologue et original, 470 monologue, `sous-titres-essai.ndjson`) dans
+  `essai/`, **déplacé le 17 novembre dans `Darwin/a_effacer/Darwin-iPhone/essai/`** (à effacer ; pour rejouer `essai.js`, refaire ces extraits à partir
+  de `original/` et `monologue/` et les déposer dans `Darwin-iPhone/essai/`).
 
 ## Fonctionnement de `site/index.html`
 
@@ -225,8 +227,8 @@ processus sont coupés à la fin : lancer `cbr.py --appliquer --max 6` plusieurs
 - Après chaque mise à jour de l'index : refaire `site/catalogue.json`, augmenter `VERSION`, pousser.
 - Après `transcrire_monologues.py --nettoyer` puis `construire_lecteur.py` (dossier Darwin) : refaire
   `sous-titres-darwin.ndjson` et le réimporter sur l'iPhone.
-- Restes à supprimer sur le Mac si Rémi l'autorise : `essai/st-essai-313.txt`, `essai/st-essai-470.txt`, le
-  dossier en double `darwin-iphone/`, `darwin-iphone.zip`, `site/index.html.avant_playlists`.
+- Restes à supprimer sur le Mac : déjà déplacés le 17 novembre dans `Darwin/a_effacer/` (`essai/`, dossier en double `darwin-iphone/`, `darwin-iphone.zip`).
+  `site/index.html.avant_playlists` reste à supprimer.
 
 ## Consignes de Rémi
 
