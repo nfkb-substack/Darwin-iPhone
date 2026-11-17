@@ -242,7 +242,7 @@ async function importer(fichiers) {
 }
 
 /* ---------- version de l'application ---------- */
-const VERSION_PAGE = 11;   // = numéro de VERSION dans sw.js
+const VERSION_PAGE = 12;   // = numéro de VERSION dans sw.js
 async function majApp() {   // dit pourquoi une mise à jour n'arrive pas (le plus souvent : connexion Vercel expirée)
   const etat = $("#verEtat"); etat.textContent = "Vérification…";
   if (navigator.onLine === false) { etat.textContent = "Pas de réseau."; return; }
@@ -434,29 +434,32 @@ if ("mediaSession" in navigator) {
   poser("seekbackward", e => sauter(-(e.seekOffset || 15))); poser("seekforward", e => sauter(e.seekOffset || 30));
   poser("seekto", e => { audio.currentTime = e.seekTime; });
 }
-let dernierEnreg = 0, defilementManuel = 0;
+let dernierEnreg = 0, defilementManuel = 0, forcerDefil = false;
 function majLecteur() {
   if (!EN_COURS) return;
   const T = audio.currentTime, z = $("#lecteur");
   if (Date.now() - dernierEnreg > 4000) { dernierEnreg = Date.now(); mem.set("pos:" + EN_COURS.cle, Math.floor(T)); }
   if (!z || z.dataset.cle !== EN_COURS.cle) return;
-  const curseur = $("#curseur");
-  if (!curseur.dataset.tenu) { curseur.max = audio.duration || 0; curseur.value = T; }
-  $("#tps").textContent = hms(T); const rest = mem.get("tpsRest", false) && isFinite(audio.duration), d = $("#dur");
-  d.textContent = rest ? "−" + hms(audio.duration - T) : hms(audio.duration);
+  const curseur = $("#curseur"), tenu = !!curseur.dataset.tenu, Tv = tenu ? +curseur.value : T;   // pendant qu'on déplace le curseur : le texte et les temps suivent le curseur, pas l'audio
+  if (!tenu) { curseur.max = audio.duration || 0; curseur.value = T; }
+  $("#tps").textContent = hms(Tv); const rest = mem.get("tpsRest", false) && isFinite(audio.duration), d = $("#dur");
+  d.textContent = rest ? "−" + hms(audio.duration - Tv) : hms(audio.duration);
   d.setAttribute("aria-label", rest ? "Temps restant. Toucher pour afficher la durée totale." : "Durée totale. Toucher pour afficher le temps restant.");
   $("#jouer").textContent = audio.paused ? "▶︎" : "❚❚";
   const st = EN_COURS.st; if (!st) return;
-  const t = versMono(T); let i = -1;
+  const t = versMono(Tv); let i = -1;
   if (t != null) { let lo = 0, hi = st.s.length - 1; while (lo <= hi) { const mi = (lo + hi) >> 1; if (st.s[mi][0] <= t + 0.05) { i = mi; lo = mi + 1; } else hi = mi - 1; } }
   if (i === EN_COURS.ligne) return;
   EN_COURS.ligne = i;
   const anc = document.querySelector("#st p.ici"); if (anc) anc.classList.remove("ici");
   $("#musique").hidden = t != null;
   const p = i >= 0 && $("#st").children[i + 1];
-  if (p) { p.classList.add("ici"); if (Date.now() - defilementManuel > 6000 && !audio.paused) p.scrollIntoView({block: "center", behavior: "smooth"}); }
+  if (p) { p.classList.add("ici"); if (tenu || forcerDefil || (Date.now() - defilementManuel > 6000 && !audio.paused)) p.scrollIntoView({block: "center", behavior: tenu ? "auto" : "smooth"}); }
 }
-["timeupdate", "play", "pause", "loadedmetadata", "seeked"].forEach(ev => audio.addEventListener(ev, majLecteur));
+["timeupdate", "play", "pause", "loadedmetadata"].forEach(ev => audio.addEventListener(ev, majLecteur));
+// Après tout déplacement dans l'audio (curseur, −15 s / +30 s, écran verrouillé, toucher d'une phrase) : le texte revient à la phrase
+// de la nouvelle position et la fait apparaître à l'écran, même en pause ou juste après un défilement à la main.
+audio.addEventListener("seeked", () => { if (!EN_COURS) return; defilementManuel = 0; EN_COURS.ligne = -2; forcerDefil = true; try { majLecteur(); } finally { forcerDefil = false; } });
 // Recalage du texte sur l'audio : à la reprise après une pause (le texte revient à la phrase lue, même si on l'a fait défiler
 // ou sélectionné entre-temps) et au retour au premier plan (iOS fige la page : le surlignement pouvait rester sur l'ancienne phrase).
 const recaler = () => { if (EN_COURS) { EN_COURS.ligne = -2; majLecteur(); } };
@@ -600,7 +603,7 @@ async function vueEpisode(n, kDemande) {
   vit.onclick = () => { pan.hidden = !pan.hidden; vit.setAttribute("aria-expanded", String(!pan.hidden)); };
   poserVit(vitesseDe());
   const c = $("#curseur");
-  c.oninput = () => { c.dataset.tenu = "1"; $("#tps").textContent = hms(+c.value); };
+  c.oninput = () => { c.dataset.tenu = "1"; majLecteur(); };   // le texte suit le curseur pendant le glissement
   c.onchange = () => { audio.currentTime = +c.value; delete c.dataset.tenu; };
   // Un toucher sur une phrase y emmène l'audio, sauf s'il sert à sélectionner, copier ou désélectionner du texte
   // (sélection présente avant le toucher, ou appui long).

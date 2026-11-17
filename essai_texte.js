@@ -48,6 +48,28 @@ const U = 'http://localhost:8769/', ok = [], dit = (nom, v) => { ok.push(!!v); c
   await P.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   const a = await T();
   dit('retour au premier plan : surlignement sur la phrase de la position réelle', Math.abs(await ici() - Math.floor(a)) <= 1);
+  // 6. barre de navigation : le texte suit le curseur pendant le glissement et se recale au relâchement, même en pause et après un défilement à la main
+  await P.evaluate(() => { document.querySelector('#audio').pause(); document.querySelector('#audio').currentTime = 25; }); await P.waitForTimeout(300);
+  const vue = () => P.evaluate(() => { const p = document.querySelector('#st p.ici'); if (!p) return null; const r = p.getBoundingClientRect(); return {i: +p.dataset.i, dans: r.bottom > 0 && r.top < innerHeight}; });
+  const glisse = (v, ev) => P.evaluate(([v, ev]) => { const c = document.querySelector('#curseur'); c.value = v; c.dispatchEvent(new Event(ev)); }, [v, ev]);
+  await P.evaluate(() => { window.scrollTo(0, 0); defilementManuel = Date.now(); });
+  await glisse(5, 'input'); await P.waitForTimeout(250);
+  let x = await vue();
+  dit('glissement : le surlignement passe à la phrase 5 et elle est ramenée à l\'écran', x && x.i === 5 && x.dans);
+  dit('glissement : le temps affiché suit le curseur, l\'audio n\'a pas encore bougé', (await P.textContent('#tps')).trim() === '0:05' && Math.abs(await T() - 25) < 0.3);
+  await glisse(33, 'input'); await P.waitForTimeout(250); x = await vue();
+  dit('glissement plus loin : phrase 33', x && x.i === 33 && x.dans);
+  await glisse(33, 'change'); await P.waitForTimeout(400); x = await vue();
+  dit('relâchement : l\'audio va à 33, surlignement et écran recalés, toujours en pause', Math.abs(await T() - 33) < 0.5 && x && x.i === 33 && x.dans && await P.evaluate(() => document.querySelector('#audio').paused));
+  await P.evaluate(() => { window.scrollTo(0, 0); defilementManuel = Date.now(); });
+  await glisse(12, 'input'); await glisse(12, 'change'); await P.waitForTimeout(400); x = await vue();
+  dit('relâchement après un défilement à la main : phrase 12 visible', x && x.i === 12 && x.dans);
+  await P.evaluate(() => { window.scrollTo(0, 0); defilementManuel = Date.now(); });
+  await P.click('#p30'); await P.waitForTimeout(1500); x = await vue();
+  dit('bouton +30 s en pause : phrase 38-42 surlignée et visible', x && x.i >= 38 && x.dans);
+  await P.evaluate(() => { window.scrollTo(0, 0); defilementManuel = Date.now(); });
+  await P.click('#m15'); await P.waitForTimeout(1500); x = await vue();
+  dit('bouton −15 s : phrase visible', x && x.dans && Math.abs(x.i - (await T())) <= 1.5);
   console.log(errs.length ? errs : 'aucune erreur de page'); await b.close(); srv.close();
   if (ok.includes(false) || errs.length) process.exit(1);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -40,6 +40,21 @@ function wav(sec) { const n = 8000 * sec, b = Buffer.alloc(44 + n, 128); b.write
     dit('choix retenu dans le navigateur', await P.evaluate(() => localStorage.getItem('darwin-lec-restant')) === '1');
     await P.click('.lec-t1'); dit('second appui : retour à la durée totale', await t1() === f(dur) && await P.evaluate(() => localStorage.getItem('darwin-lec-restant')) === '0'); }
   await P.evaluate(() => L.a.pause()); await P.waitForTimeout(100);   // en pause : sinon la lecture avance pendant l'essai et fausse la comparaison
+  // barre de position : le texte suit le curseur au glissement et se recale au relâchement (même en pause, même avec « Suivre » décoché)
+  { const cur = () => P.evaluate(() => { const c = document.querySelector('.lec-texte .c.cur'); if (!c) return null; const r = c.getBoundingClientRect(), z = document.querySelector('.lec-texte').getBoundingClientRect(); return {i: +c.dataset.i, dans: r.top >= z.top - 1 && r.bottom <= z.bottom + 1}; });
+    const bouge = (v, ev) => P.evaluate(([v, ev]) => { const p = document.querySelector('.lec-pos'); p.value = v; p.dispatchEvent(new Event(ev)); }, [v, ev]);
+    await P.evaluate(() => { const z = document.querySelector('.lec-texte'); z.style.height = '70px'; });   // zone assez courte pour devoir défiler
+    dit('zone de texte défilante pendant l\'essai', await P.evaluate(() => { const z = document.querySelector('.lec-texte'); return z.scrollHeight > z.clientHeight + 80; }));
+    await P.evaluate(() => { document.querySelector('.lec-suivre').checked = false; document.querySelector('.lec-texte').scrollTop = 0; });
+    await bouge(500, 'input'); await P.waitForTimeout(200); let c = await cur();
+    dit('glissement : phrase du curseur (≈ 20) surlignée et visible, « Suivre » décoché', c && Math.abs(c.i - 20) <= 1 && c.dans);
+    dit('glissement : l\'audio n\'a pas encore bougé', await P.evaluate(() => L.a.currentTime) < 5);
+    await bouge(500, 'change'); await P.waitForTimeout(300); c = await cur();
+    dit('relâchement : audio à ≈ 20 s, surlignement et vue recalés', Math.abs(await P.evaluate(() => L.a.currentTime) - 20) < 1 && c && Math.abs(c.i - 20) <= 1 && c.dans);
+    await P.evaluate(() => { document.querySelector('.lec-texte').scrollTop = 0; document.querySelector('.lec-suivre').checked = false; });
+    await bouge(900, 'input'); await bouge(900, 'change'); await P.waitForTimeout(300); c = await cur();
+    dit('second déplacement après un défilement à la main : phrase ≈ 36 visible', c && Math.abs(c.i - 36) <= 1 && c.dans);
+    dit('« Suivre » laissé tel que l\'utilisateur l\'avait réglé', await P.evaluate(() => document.querySelector('.lec-suivre').checked) === false); }
   const t0 = await P.evaluate(() => L.a.currentTime);
   await P.hover('.lec-texte .c[data-i="12"]'); await P.click('.lec-texte .drap[data-d="12"]'); await P.waitForTimeout(200);
   dit('drapeau : phrase 12 signalée (état, instant)', await P.evaluate(n => { const x = ETQ.err[n + ':12']; return x && x.d && x.t === 12 && document.querySelector('.drap[data-d="12"]').classList.contains('on'); }, num));

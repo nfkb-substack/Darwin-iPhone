@@ -43,7 +43,7 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - `site/index.html` : toute l'application (HTML, CSS, JS, ~38 Ko).
 - `site/sw.js` : service worker. La réserve répond d'abord (la page s'ouvre sans réseau, même si la connexion
   Vercel a expiré), une copie fraîche est demandée en arrière-plan et sert à l'ouverture suivante.
-  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-11`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
+  **Après toute modification de `site/`, augmenter `VERSION`** (actuellement `darwin-iphone-12`, à répercuter dans `VERSION_PAGE` de `site/index.html`). Les appels `/api/`
   ne passent jamais par la réserve.
 - `site/catalogue.json` : 612 diffusions (n°, date, titre, première diffusion, lien Radio France, résumé de la fiche).
 - `site/api/ecoutees.js` + `_fusion.js`, `site/package.json` : service de l'historique d'écoute (voir plus bas).
@@ -87,6 +87,11 @@ exclut `*.ndjson`, `*.mp3` et `essai/`.
 - **Temps de droite du lecteur** (`#dur`, version 11) : bouton ; un appui bascule entre la durée totale (« 1:23:45 ») et le temps restant
   (« −12:34 », en temps du fichier, indépendant de la vitesse). Choix retenu (`mem` clé `tpsRest`). Même chose sur le site privé
   (`.lec-t1`, `lecT1()`, clé `darwin-lec-restant`) via `outils/ajouter_restant_prive.py`.
+- **Curseur de position et texte** (version 12) : pendant qu'on glisse le curseur (`#curseur`, `dataset.tenu`), `majLecteur` surligne la phrase
+  de la position du curseur (`Tv`) et fait défiler sans animation ; après tout déplacement dans l'audio (événement `seeked` : curseur,
+  −15 s / +30 s, écran verrouillé, toucher d'une phrase), `forcerDefil` ramène la phrase à l'écran même en pause ou juste après un
+  défilement à la main (avant, le défilement automatique n'avait lieu qu'en lecture et 6 s après le dernier toucher, et le geste sur le
+  curseur comptait comme un défilement à la main). Site privé : `outils/ajouter_curseur_prive.py` (`L.glisse`, `L.forcer`), « Suivre » n'est pas modifié.
 - **Texte synchronisé** (`majLecteur`, `recaler`) : la phrase surlignée est celle dont le début précède `versMono(currentTime)`.
   Recalé à chaque `play` (le texte revient à la phrase lue), au retour au premier plan et à `pageshow` (iOS fige la page :
   le surlignement pouvait rester sur l'ancienne phrase). Un toucher sur une phrase déplace l'audio, sauf s'il y avait une
